@@ -1,0 +1,214 @@
+{
+  "project": "Geo — Daily Geography Outline Quiz",
+  "branchName": "loop/geo-daily-quiz",
+  "description": "A daily geography guessing game: Hangman-style letter guessing against a countdown clock, while the target country's outline (and its neighbors') draw themselves in as hints.",
+  "generatedAt": "2026-07-11",
+  "sourcePrd": "PRD.md",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Scaffold the Vite + React + TypeScript project",
+      "description": "As a developer, I need a working project skeleton so subsequent stories have somewhere to build.",
+      "acceptanceCriteria": [
+        "Project created via the Vite react-ts template",
+        "Framer Motion added as a dependency",
+        "Dev server starts and renders a placeholder page with npm run dev",
+        "Typecheck passes",
+        "Verify placeholder page loads in browser using automate-browser skill"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Suggested skills: build-ui, automate-browser"
+    },
+    {
+      "id": "US-002",
+      "title": "Generate country outline + centroid data from world-atlas TopoJSON",
+      "description": "As a developer, I need per-country SVG outline paths and centroid coordinates so the game can render and position any country.",
+      "acceptanceCriteria": [
+        "Build-time script loads world-atlas TopoJSON at 50m resolution",
+        "Script converts each country's geometry to an SVG path string using an equal-area or equirectangular projection (not Mercator)",
+        "Script computes each country's centroid as { lat, lng }",
+        "Output written to src/data/countries-geo.json, keyed by ISO 3166-1 alpha-2 or alpha-3 code (pick one and use it consistently across all later stories)",
+        "Disputed territories are included/excluded/labeled exactly as world-atlas's Natural Earth source provides them, with no manual overrides",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Merge neighbor adjacency, unique-letter count, and island flag into country data",
+      "description": "As a developer, I need each country's neighbor list and name-difficulty metadata so daily selection and gameplay logic have what they need.",
+      "acceptanceCriteria": [
+        "Script fetches or uses a local snapshot of restcountries.com's `borders` field to attach neighbor_codes: string[] per country (same ISO code scheme as US-002)",
+        "Script computes unique_letters: number from each country's name (case-insensitive, letters only)",
+        "Script computes is_island: boolean as (neighbor_codes.length === 0)",
+        "Merged output written to src/data/countries.json combining this with US-002's outline/centroid data",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Implement deterministic daily-country and neighbor-subset selection",
+      "description": "As a player, I want the same target country as every other player today, so the shareable result is comparable.",
+      "acceptanceCriteria": [
+        "src/lib/game/dailyCountry.ts exports a function taking a UTC date and returning today's target country via a deterministic hash: hash(UTC date) mod country_count",
+        "The same hash-based approach selects up to 3 neighbors when a country has more than 3 (documented explicitly in code comments as the chosen tie-breaking rule, since the PRD leaves the exact selection algorithm unspecified beyond 'deterministic, seeded like the daily country')",
+        "Countries with 0 neighbors (is_island) return an empty neighbor list without error",
+        "Given the same date input, the function returns identical output on every call (unit test verifies this)",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Ambiguity flagged: PRD does not specify HOW to pick which 3 neighbors when a country has more than 3 (e.g. largest shared border vs. alphabetical vs. hashed order). This story picks and documents the hashed-order approach for consistency with daily-country selection — revisit if a different rule is wanted later."
+    },
+    {
+      "id": "US-005",
+      "title": "Build the target-country outline draw-on animation component",
+      "description": "As a player, I want to see the target country's outline draw itself in, so the drawing acts as a visual hint and implicit timer.",
+      "acceptanceCriteria": [
+        "A CountryOutline component accepts a country's SVG path and a completion percentage (0-100) prop",
+        "The component animates stroke reveal via Framer Motion's pathLength/pathSpacing props, not manual getTotalLength()",
+        "Rendering today's target country (from US-004) at various completion percentages visibly changes how much of the outline is drawn",
+        "Typecheck passes",
+        "Verify in browser using automate-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Suggested skills: automate-browser, build-ui"
+    },
+    {
+      "id": "US-006",
+      "title": "Build the countdown clock and unique-letter-scaled penalty state machine",
+      "description": "As a player, I want wrong guesses to cost me time proportional to the puzzle's real difficulty, so easy names aren't trivially free.",
+      "acceptanceCriteria": [
+        "src/lib/game/clock.ts implements a 60-second countdown, ticking down in real time",
+        "A wrong-letter-guess event subtracts time per a configurable penalty-tier table (exported as a named constant, not hardcoded inline): illustrative starting values are <=5 unique letters -> 20s, 6-9 -> 15s, 10+ -> 10s, clearly commented as placeholder values pending playtesting",
+        "Clock reaching 0 transitions state to 'failed'",
+        "An explicit stop/give-up call also transitions state to 'failed' immediately",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Ambiguity flagged: exact penalty values are explicitly TBD in the PRD (needs playtesting) — implement as an easily-tunable config table, not as a design decision this story finalizes."
+    },
+    {
+      "id": "US-007",
+      "title": "Build the Hangman letter-guess UI and wire it to the clock and outline",
+      "description": "As a player, I want to guess letters on-screen or via my keyboard and see immediate feedback, so I can solve the puzzle.",
+      "acceptanceCriteria": [
+        "An on-screen A-Z keyboard component is the visual source of truth, showing per-letter state: unguessed / correct / wrong",
+        "A global keydown listener for a-z dispatches to the same guess-submission handler as clicking an on-screen key",
+        "A correct guess fills every instance of that letter in the target name's blanks at once",
+        "A wrong guess triggers the penalty from US-006's clock and updates the on-screen key to the 'wrong' state",
+        "A visible 'give up' button ends the round as 'failed' immediately",
+        "Filling in the complete target name transitions round state to 'solved'",
+        "The target outline's draw completion (US-005) is driven by elapsed time on the clock (US-006), covering the first ~40-50% of the 60s budget",
+        "Typecheck passes",
+        "Verify in browser using automate-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Suggested skills: automate-browser, build-ui"
+    },
+    {
+      "id": "US-008",
+      "title": "Render neighbor country outlines at compass-accurate positions with staggered onset",
+      "description": "As a player, I want to see up to 3 neighboring countries appear in their real-world direction once I've used enough time, so I get a spatial hint layer.",
+      "acceptanceCriteria": [
+        "Neighbor outlines (reusing the CountryOutline component from US-005) remain hidden while time remaining is above the ~40-50% staggered-onset threshold",
+        "Once time remaining drops below that threshold, each of today's up-to-3 neighbor countries (from US-004) begins drawing in",
+        "Each neighbor is positioned at the nearest of a fixed 8-point compass anchor (N, NE, E, SE, S, SW, W, NW) around the target, computed from the neighbor's centroid relative to the target's centroid",
+        "When two neighbors round to the same compass anchor, the second is offset to an adjacent unused anchor rather than overlapping the first",
+        "Countries with fewer than 3 neighbors (including 0, for islands) simply show fewer neighbor slots, with no error or placeholder box",
+        "Typecheck passes",
+        "Verify in browser using automate-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Ambiguity flagged: PRD specifies 'nearest anchor point' without naming a specific anchor count or collision rule. This story commits to an 8-point compass with adjacent-anchor offsetting on collision — reasonable default, but revisit if it looks wrong once real neighbor geometry is on screen. Suggested skills: automate-browser, build-ui"
+    },
+    {
+      "id": "US-009",
+      "title": "Reveal neighbor name labels letter-by-letter in randomized order",
+      "description": "As a player, I want each visible neighbor's name to slowly spell itself out in a non-obvious order, so it functions as an escalating (not instant) hint.",
+      "acceptanceCriteria": [
+        "Each neighbor slot shows a redacted name label (blanks) as soon as its outline begins appearing (per US-008)",
+        "Letters of each neighbor's name reveal automatically over time in a randomized (not left-to-right) order — this is not player-guessed input",
+        "The reveal order is randomized once per round per neighbor, not re-randomized on every re-render",
+        "By the time the clock reaches 0, each visible neighbor's full name is revealed",
+        "Typecheck passes",
+        "Verify in browser using automate-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Suggested skills: automate-browser"
+    },
+    {
+      "id": "US-010",
+      "title": "Display the trivia fact overlay on the target country's outline",
+      "description": "As a player, I want to see an interesting fact about the target country while its outline draws, so the wait has some content beyond the animation.",
+      "acceptanceCriteria": [
+        "A text overlay renders on top of the target CountryOutline, showing the target country's trivia_fact string",
+        "Component reads from src/data/trivia.json, keyed by the same ISO code as countries.json",
+        "If no fact exists yet for a country (expected for most countries until US-013 lands), the overlay is hidden rather than showing blank/undefined text",
+        "Typecheck passes",
+        "Verify in browser using automate-browser skill"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Deliberately decoupled from trivia content generation (US-013) — ships against a stub/partial src/data/trivia.json so UI work isn't blocked on content authoring. Suggested skills: automate-browser"
+    },
+    {
+      "id": "US-011",
+      "title": "Persist streak state to localStorage",
+      "description": "As a player, I want my consecutive-day streak remembered between visits, so the daily-ritual hook actually works.",
+      "acceptanceCriteria": [
+        "src/lib/streak/index.ts reads/writes { current_streak, longest_streak, last_played_date } to localStorage",
+        "On round outcome 'solved', current_streak increments if last_played_date was yesterday (UTC), resets to 1 otherwise; longest_streak updates if exceeded",
+        "On round outcome 'failed' (timeout or give-up), current_streak resets to 0",
+        "Streak value is read on app load and reflects the persisted state without requiring a fresh guess",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Supabase is explicitly out of scope for this story and for v1 generally — localStorage only."
+    },
+    {
+      "id": "US-012",
+      "title": "Generate and display the spoiler-safe shareable result string",
+      "description": "As a player, I want to copy a compact result summary that doesn't spoil the answer for people who haven't solved it yet.",
+      "acceptanceCriteria": [
+        "On round end, a share string is generated containing: a day number, the outcome (time remaining if solved, or 'failed'), and a colored guess-pattern row (correct vs. wrong letter guesses, no letters shown)",
+        "The target country's name/flag appears in the share string ONLY when the outcome is 'solved' — a failed round's share string omits the country identity entirely",
+        "A visible 'copy' button copies the exact share string to the clipboard",
+        "Typecheck passes",
+        "Verify in browser using automate-browser skill"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Exact visual format (colors/emoji) is not fully specified in the PRD — this story should pick a concrete, readable format and document it in code comments as the working default. Suggested skills: automate-browser"
+    },
+    {
+      "id": "US-013",
+      "title": "Author LLM-generated, human-reviewed trivia facts for all countries",
+      "description": "As a player, I want a genuinely interesting, verifiably true fact for whichever country comes up, so the trivia overlay is worth reading.",
+      "acceptanceCriteria": [
+        "src/data/trivia.json contains one trivia_fact string per country present in src/data/countries.json (~190 entries)",
+        "Each fact is LLM-generated in a punchy, specific, surprising tone (matching the reference example: 'This country has enough nuclear fallout shelters to house more than 100% of its population')",
+        "Every generated fact is flagged in the story's notes as PENDING HUMAN REVIEW — this story does not mark itself fully 'passes: true' on generation alone; a human must review for factual accuracy before the data is considered final",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "This is a content-authoring task with a mandatory human-review gate, not a pure coding task — do not let an autonomous loop iteration silently treat LLM-generated trivia as fact-checked. Flag for explicit human review before shipping, per the locked PRD decision."
+    }
+  ]
+}

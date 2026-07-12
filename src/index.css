@@ -49,6 +49,15 @@ body {
   height: 100%;
 }
 
+.neighbors-layer__name {
+  margin: 0.15rem 0 0;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: center;
+}
+
 .clock {
   font-size: 1.5rem;
   font-variant-numeric: tabular-nums;

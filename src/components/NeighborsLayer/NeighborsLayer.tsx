@@ -1,6 +1,7 @@
 import { CountryOutline } from "../CountryOutline";
 import { anchorVector } from "../../lib/geo/compass";
 import type { NeighborSlot } from "../../lib/geo/compass";
+import { useNeighborReveal } from "../../lib/game/useNeighborReveal";
 
 export interface NeighborsLayerProps {
   slots: NeighborSlot[];
@@ -17,11 +18,13 @@ export interface NeighborsLayerProps {
  * simply renders fewer slots — no placeholder or error.
  */
 export function NeighborsLayer({ slots, visible, completion, radius = 130 }: NeighborsLayerProps) {
+  const reveals = useNeighborReveal(slots, completion);
+
   if (!visible || slots.length === 0) return null;
 
   return (
     <div className="neighbors-layer" data-testid="neighbors-layer">
-      {slots.map((slot) => {
+      {slots.map((slot, i) => {
         const { dx, dy } = anchorVector(slot.anchor);
         return (
           <div
@@ -36,6 +39,9 @@ export function NeighborsLayer({ slots, visible, completion, radius = 130 }: Nei
               completion={completion}
               className="neighbors-layer__outline"
             />
+            <p className="neighbors-layer__name" data-testid={`neighbor-name-${slot.code}`}>
+              {reveals[i].displayName}
+            </p>
           </div>
         );
       })}

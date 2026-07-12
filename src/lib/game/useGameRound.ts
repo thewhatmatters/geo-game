@@ -22,6 +22,8 @@ export interface GameRound {
   guesses: Record<string, LetterState>;
   displayName: string;
   outlineCompletion: number;
+  neighborsVisible: boolean;
+  neighborCompletion: number;
   guessLetter: (letter: string) => void;
   giveUp: () => void;
 }
@@ -72,11 +74,19 @@ export function useGameRound(target: Country): GameRound {
     .map((char) => (/[A-Z]/.test(char) ? (guesses[char] === "correct" ? char : "_") : char))
     .join(" ");
 
-  const outlineCompletion = Math.min(
+  const elapsedSeconds = ROUND_DURATION_SECONDS - snapshot.remainingSeconds;
+  const onsetElapsedSeconds = ROUND_DURATION_SECONDS * HINT_ONSET_FRACTION;
+
+  const outlineCompletion = Math.min(100, (elapsedSeconds / onsetElapsedSeconds) * 100);
+
+  // Neighbors begin appearing once the target's own draw-in phase ends (the
+  // same "~40-50% of the clock" threshold from CLAUDE.md), then draw in
+  // themselves over the remaining time budget.
+  const neighborsVisible = elapsedSeconds >= onsetElapsedSeconds;
+  const neighborPhaseDuration = ROUND_DURATION_SECONDS - onsetElapsedSeconds;
+  const neighborCompletion = Math.min(
     100,
-    ((ROUND_DURATION_SECONDS - snapshot.remainingSeconds) /
-      (ROUND_DURATION_SECONDS * HINT_ONSET_FRACTION)) *
-      100,
+    Math.max(0, ((elapsedSeconds - onsetElapsedSeconds) / neighborPhaseDuration) * 100),
   );
 
   return {
@@ -85,6 +95,8 @@ export function useGameRound(target: Country): GameRound {
     guesses,
     displayName,
     outlineCompletion,
+    neighborsVisible,
+    neighborCompletion,
     guessLetter,
     giveUp,
   };

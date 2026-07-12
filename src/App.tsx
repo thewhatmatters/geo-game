@@ -1,9 +1,12 @@
 import { Keyboard } from "./components/Keyboard";
 import { CountryOutline } from "./components/CountryOutline";
+import { NeighborsLayer } from "./components/NeighborsLayer";
 import { getDailyCountry } from "./lib/game/dailyCountry";
 import { useGameRound } from "./lib/game/useGameRound";
+import { computeNeighborSlots } from "./lib/geo/compass";
 
 const daily = getDailyCountry(new Date());
+const neighborSlots = computeNeighborSlots(daily);
 
 function App() {
   const round = useGameRound(daily.target);
@@ -19,6 +22,11 @@ function App() {
           path={daily.target.path}
           completion={round.outlineCompletion}
           className="outline-demo__svg"
+        />
+        <NeighborsLayer
+          slots={neighborSlots}
+          visible={round.neighborsVisible}
+          completion={round.neighborCompletion}
         />
       </div>
       <p className="display-name" data-testid="display-name">

@@ -16,6 +16,10 @@ const countries = countriesData as Record<CountryCode, Country>;
 // Sorted for a stable, reproducible index order independent of JSON key order.
 const countryCodes = Object.keys(countries).sort();
 
+export function getCountry(code: CountryCode): Country {
+  return countries[code];
+}
+
 export interface DailySelection {
   date: string;
   targetCode: CountryCode;

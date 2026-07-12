@@ -131,7 +131,7 @@
         "Verify in browser using automate-browser skill"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Ambiguity flagged: PRD specifies 'nearest anchor point' without naming a specific anchor count or collision rule. This story commits to an 8-point compass with adjacent-anchor offsetting on collision \u2014 reasonable default, but revisit if it looks wrong once real neighbor geometry is on screen. Suggested skills: automate-browser, build-ui"
     },
     {

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "gen:countries-geo": "node scripts/generate-countries-geo.mjs",
-    "gen:countries": "node scripts/merge-country-metadata.mjs"
+    "gen:countries": "node scripts/merge-country-metadata.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",
@@ -28,6 +29,7 @@
     "topojson-client": "^3.1.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
+    "vitest": "^4.1.10",
     "world-atlas": "^2.0.2",
     "world-countries": "^5.1.0"
   }

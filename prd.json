@@ -1,5 +1,5 @@
 {
-  "project": "Geo — Daily Geography Outline Quiz",
+  "project": "Geo \u2014 Daily Geography Outline Quiz",
   "branchName": "loop/geo-daily-quiz",
   "description": "A daily geography guessing game: Hangman-style letter guessing against a countdown clock, while the target country's outline (and its neighbors') draw themselves in as hints.",
   "generatedAt": "2026-07-11",
@@ -64,8 +64,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "Ambiguity flagged: PRD does not specify HOW to pick which 3 neighbors when a country has more than 3 (e.g. largest shared border vs. alphabetical vs. hashed order). This story picks and documents the hashed-order approach for consistency with daily-country selection — revisit if a different rule is wanted later."
+      "passes": true,
+      "notes": "Ambiguity flagged: PRD does not specify HOW to pick which 3 neighbors when a country has more than 3 (e.g. largest shared border vs. alphabetical vs. hashed order). This story picks and documents the hashed-order approach for consistency with daily-country selection \u2014 revisit if a different rule is wanted later."
     },
     {
       "id": "US-005",
@@ -96,7 +96,7 @@
       ],
       "priority": 6,
       "passes": false,
-      "notes": "Ambiguity flagged: exact penalty values are explicitly TBD in the PRD (needs playtesting) — implement as an easily-tunable config table, not as a design decision this story finalizes."
+      "notes": "Ambiguity flagged: exact penalty values are explicitly TBD in the PRD (needs playtesting) \u2014 implement as an easily-tunable config table, not as a design decision this story finalizes."
     },
     {
       "id": "US-007",
@@ -132,7 +132,7 @@
       ],
       "priority": 8,
       "passes": false,
-      "notes": "Ambiguity flagged: PRD specifies 'nearest anchor point' without naming a specific anchor count or collision rule. This story commits to an 8-point compass with adjacent-anchor offsetting on collision — reasonable default, but revisit if it looks wrong once real neighbor geometry is on screen. Suggested skills: automate-browser, build-ui"
+      "notes": "Ambiguity flagged: PRD specifies 'nearest anchor point' without naming a specific anchor count or collision rule. This story commits to an 8-point compass with adjacent-anchor offsetting on collision \u2014 reasonable default, but revisit if it looks wrong once real neighbor geometry is on screen. Suggested skills: automate-browser, build-ui"
     },
     {
       "id": "US-009",
@@ -140,7 +140,7 @@
       "description": "As a player, I want each visible neighbor's name to slowly spell itself out in a non-obvious order, so it functions as an escalating (not instant) hint.",
       "acceptanceCriteria": [
         "Each neighbor slot shows a redacted name label (blanks) as soon as its outline begins appearing (per US-008)",
-        "Letters of each neighbor's name reveal automatically over time in a randomized (not left-to-right) order — this is not player-guessed input",
+        "Letters of each neighbor's name reveal automatically over time in a randomized (not left-to-right) order \u2014 this is not player-guessed input",
         "The reveal order is randomized once per round per neighbor, not re-randomized on every re-render",
         "By the time the clock reaches 0, each visible neighbor's full name is revealed",
         "Typecheck passes",
@@ -163,7 +163,7 @@
       ],
       "priority": 10,
       "passes": false,
-      "notes": "Deliberately decoupled from trivia content generation (US-013) — ships against a stub/partial src/data/trivia.json so UI work isn't blocked on content authoring. Suggested skills: automate-browser"
+      "notes": "Deliberately decoupled from trivia content generation (US-013) \u2014 ships against a stub/partial src/data/trivia.json so UI work isn't blocked on content authoring. Suggested skills: automate-browser"
     },
     {
       "id": "US-011",
@@ -179,7 +179,7 @@
       ],
       "priority": 11,
       "passes": false,
-      "notes": "Supabase is explicitly out of scope for this story and for v1 generally — localStorage only."
+      "notes": "Supabase is explicitly out of scope for this story and for v1 generally \u2014 localStorage only."
     },
     {
       "id": "US-012",
@@ -187,14 +187,14 @@
       "description": "As a player, I want to copy a compact result summary that doesn't spoil the answer for people who haven't solved it yet.",
       "acceptanceCriteria": [
         "On round end, a share string is generated containing: a day number, the outcome (time remaining if solved, or 'failed'), and a colored guess-pattern row (correct vs. wrong letter guesses, no letters shown)",
-        "The target country's name/flag appears in the share string ONLY when the outcome is 'solved' — a failed round's share string omits the country identity entirely",
+        "The target country's name/flag appears in the share string ONLY when the outcome is 'solved' \u2014 a failed round's share string omits the country identity entirely",
         "A visible 'copy' button copies the exact share string to the clipboard",
         "Typecheck passes",
         "Verify in browser using automate-browser skill"
       ],
       "priority": 12,
       "passes": false,
-      "notes": "Exact visual format (colors/emoji) is not fully specified in the PRD — this story should pick a concrete, readable format and document it in code comments as the working default. Suggested skills: automate-browser"
+      "notes": "Exact visual format (colors/emoji) is not fully specified in the PRD \u2014 this story should pick a concrete, readable format and document it in code comments as the working default. Suggested skills: automate-browser"
     },
     {
       "id": "US-013",
@@ -203,12 +203,12 @@
       "acceptanceCriteria": [
         "src/data/trivia.json contains one trivia_fact string per country present in src/data/countries.json (~190 entries)",
         "Each fact is LLM-generated in a punchy, specific, surprising tone (matching the reference example: 'This country has enough nuclear fallout shelters to house more than 100% of its population')",
-        "Every generated fact is flagged in the story's notes as PENDING HUMAN REVIEW — this story does not mark itself fully 'passes: true' on generation alone; a human must review for factual accuracy before the data is considered final",
+        "Every generated fact is flagged in the story's notes as PENDING HUMAN REVIEW \u2014 this story does not mark itself fully 'passes: true' on generation alone; a human must review for factual accuracy before the data is considered final",
         "Typecheck passes"
       ],
       "priority": 13,
       "passes": false,
-      "notes": "This is a content-authoring task with a mandatory human-review gate, not a pure coding task — do not let an autonomous loop iteration silently treat LLM-generated trivia as fact-checked. Flag for explicit human review before shipping, per the locked PRD decision."
+      "notes": "This is a content-authoring task with a mandatory human-review gate, not a pure coding task \u2014 do not let an autonomous loop iteration silently treat LLM-generated trivia as fact-checked. Flag for explicit human review before shipping, per the locked PRD decision."
     }
   ]
 }

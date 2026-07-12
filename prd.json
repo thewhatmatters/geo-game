@@ -95,7 +95,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Ambiguity flagged: exact penalty values are explicitly TBD in the PRD (needs playtesting) \u2014 implement as an easily-tunable config table, not as a design decision this story finalizes."
     },
     {

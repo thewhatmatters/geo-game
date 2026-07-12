@@ -36,10 +36,12 @@ export function NeighborsLayer({ slots, visible, completion, strokeWidth, labelF
   const xMargin = labelFontSize;
   const yMargin = labelFontSize * 0.75;
 
-  // Center each label on the VISIBLE portion of its country, not the full
-  // true bounding box (a large neighbor like Brazil can extend far outside
-  // the viewBox, which would otherwise push a bounds-centered label off
-  // frame entirely), then clamp the offset placement back inside the frame.
+  // Center each label INSIDE the VISIBLE portion of its country's shape
+  // (matching how the trivia overlay sits inside the target's own
+  // outline), not its full true bounding box — a large neighbor like
+  // Brazil can extend far outside the viewBox, which would otherwise
+  // place a bounds-centered label off frame entirely. Clamp back inside
+  // the frame in case the visible sliver itself sits right at the edge.
   const rawCandidates: LabelCandidate[] = [];
   slots.forEach((slot, i) => {
     const vb = slot.visibleBounds;
@@ -48,7 +50,7 @@ export function NeighborsLayer({ slots, visible, completion, strokeWidth, labelF
       code: slot.code,
       text: reveals[i].displayName,
       x: Math.min(Math.max((vb.minX + vb.maxX) / 2, frame.minX + xMargin), frame.maxX - xMargin),
-      y: Math.min(vb.maxY + labelFontSize * 1.5, frame.maxY - yMargin),
+      y: Math.min(Math.max((vb.minY + vb.maxY) / 2, frame.minY + yMargin), frame.maxY - yMargin),
     });
   });
 
@@ -76,6 +78,7 @@ export function NeighborsLayer({ slots, visible, completion, strokeWidth, labelF
                 x={label.x}
                 y={label.y}
                 textAnchor="middle"
+                dominantBaseline="central"
                 fontSize={labelFontSize}
                 fontWeight={600}
                 fill={NEIGHBOR_COLOR}

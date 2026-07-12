@@ -16,9 +16,11 @@ import {
  * their true relative scale/position within that frame and may partially
  * extend past its edges (correct for a large neighbor next to a small
  * target — e.g. Brazil next to Paraguay) or as a small sliver (a large
- * target next to a tiny neighbor).
+ * target next to a tiny neighbor). Large so neighbors actually have room to
+ * be visible (not just a thin sliver at the frame's edge) now that the map
+ * itself renders large — see .outline-demo__svg.
  */
-const VIEWBOX_MARGIN_RATIO = 0.7;
+const VIEWBOX_MARGIN_RATIO = 2.5;
 
 /** On-screen pixel width CountryOutline/the scene SVG renders at (matches .outline-demo__svg in index.css) — used to convert a desired px size (stroke width, label font) into viewBox user-units. */
 export const SCENE_RENDER_PX = 320;

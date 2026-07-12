@@ -20,7 +20,7 @@ const dayNumber = getDayNumber(new Date());
 // geographic bounding box is.
 const TARGET_STROKE_PX = 1.75;
 const NEIGHBOR_STROKE_PX = 1;
-const NEIGHBOR_LABEL_PX = 11;
+const NEIGHBOR_LABEL_PX = 8;
 
 function App() {
   const round = useGameRound(daily.target);
@@ -45,16 +45,20 @@ function App() {
   }, [round.status, round.remainingSeconds, round.guesses]);
 
   return (
-    <div className="app">
-      <h1>Geo</h1>
-      <p className="streak" data-testid="streak">
-        Streak: {streak.current_streak} (best {streak.longest_streak})
-      </p>
-      <p className="clock" data-testid="clock">
-        {Math.ceil(round.remainingSeconds)}s
-      </p>
+    <>
+      {/* A fixed, full-viewport backdrop, kept as a sibling (not a child)
+          of .app: .app gets an explicit z-index to reliably stack above
+          it (position:fixed content otherwise paints above ordinary
+          static-flow text regardless of DOM order, which is what made
+          the map cover the title/streak text when nested inside .app
+          without this). */}
       <div className="outline-demo">
-        <svg viewBox={scene.viewBox} className="outline-demo__svg" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          viewBox={scene.viewBox}
+          preserveAspectRatio="xMidYMid slice"
+          className="outline-demo__svg"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <CountryPath
             path={daily.target.path}
             completion={round.outlineCompletion}
@@ -71,29 +75,38 @@ function App() {
         </svg>
         {!round.neighborsVisible && <TriviaOverlay code={daily.targetCode} />}
       </div>
-      <p className="display-name" data-testid="display-name">
-        {round.displayName}
-      </p>
-      {round.status !== "running" && (
-        <p className="round-outcome" data-testid="round-outcome">
-          {round.status === "solved" ? "Solved!" : "Failed"}
+      <div className="app">
+        <h1>Geo</h1>
+        <p className="streak" data-testid="streak">
+          Streak: {streak.current_streak} (best {streak.longest_streak})
         </p>
-      )}
-      {shareString && <ShareResult shareString={shareString} />}
-      <Keyboard
-        guesses={round.guesses}
-        onGuess={round.guessLetter}
-        disabled={round.status !== "running"}
-      />
-      <button
-        type="button"
-        className="give-up"
-        onClick={round.giveUp}
-        disabled={round.status !== "running"}
-      >
-        Give up
-      </button>
-    </div>
+        <p className="clock" data-testid="clock">
+          {Math.ceil(round.remainingSeconds)}s
+        </p>
+        <p className="display-name" data-testid="display-name">
+          {round.displayName}
+        </p>
+        {round.status !== "running" && (
+          <p className="round-outcome" data-testid="round-outcome">
+            {round.status === "solved" ? "Solved!" : "Failed"}
+          </p>
+        )}
+        {shareString && <ShareResult shareString={shareString} />}
+        <Keyboard
+          guesses={round.guesses}
+          onGuess={round.guessLetter}
+          disabled={round.status !== "running"}
+        />
+        <button
+          type="button"
+          className="give-up"
+          onClick={round.giveUp}
+          disabled={round.status !== "running"}
+        >
+          Give up
+        </button>
+      </div>
+    </>
   );
 }
 

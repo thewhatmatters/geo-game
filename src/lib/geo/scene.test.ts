@@ -72,12 +72,26 @@ describe("computeGeoScene", () => {
     expect(brazil.visibleBounds!.maxX).toBeLessThanOrEqual(vbMinX + vbWidth);
     expect(brazil.visibleBounds!.minY).toBeGreaterThanOrEqual(vbMinY);
     expect(brazil.visibleBounds!.maxY).toBeLessThanOrEqual(vbMinY + vbHeight);
+  });
 
-    // Brazil's true bounds should NOT already fit inside the viewBox on
-    // their own (otherwise this test wouldn't be exercising the clip at
-    // all) — it's genuinely a much bigger country than the viewBox margin.
-    const trueHeight = brazil.bounds.maxY - brazil.bounds.minY;
-    expect(trueHeight).toBeGreaterThan(vbHeight);
+  it("clips a neighbor whose true bounds genuinely exceed the viewBox (tiny enclave target, large neighbor)", () => {
+    // Lesotho is a small country entirely enclosed by South Africa, which
+    // is far larger than any reasonable viewBox margin around it — a
+    // realistic case where the true bounds truly can't fit.
+    const target = countries["LSO"];
+    const scene = computeGeoScene({ target, neighborCodes: ["ZAF"] });
+    const southAfrica = scene.neighbors.find((n) => n.code === "ZAF")!;
+    const [, , vbWidth, vbHeight] = scene.viewBox.split(" ").map(Number);
+
+    const trueWidth = southAfrica.bounds.maxX - southAfrica.bounds.minX;
+    const trueHeight = southAfrica.bounds.maxY - southAfrica.bounds.minY;
+    expect(trueWidth > vbWidth || trueHeight > vbHeight).toBe(true);
+
+    // Still clipped correctly to the frame despite that.
+    expect(southAfrica.visibleBounds).not.toBeNull();
+    const [vbMinX, vbMinY] = scene.viewBox.split(" ").map(Number);
+    expect(southAfrica.visibleBounds!.minX).toBeGreaterThanOrEqual(vbMinX);
+    expect(southAfrica.visibleBounds!.minY).toBeGreaterThanOrEqual(vbMinY);
   });
 
   it("returns null visibleBounds for a neighbor that doesn't intersect the viewBox at all", () => {

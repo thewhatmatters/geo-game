@@ -20,21 +20,35 @@ body {
 }
 
 .app {
+  position: relative;
+  z-index: 1;
   width: min(95vw, 900px);
   text-align: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 20px;
+  padding: 2rem 1.5rem;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
 }
 
+/* Fixed, full-viewport backdrop — the map fills the entire browser window
+   (see preserveAspectRatio="xMidYMid slice" in App.tsx, same technique as
+   CSS background-size: cover) with the target always at its visual center,
+   regardless of the viewport's aspect ratio. .app's explicit z-index above
+   is what keeps the game UI on top — a position:fixed element with no (or
+   negative) z-index still paints above ordinary static-flow text
+   regardless of DOM order, so the UI needs its own stacking level to
+   reliably win, not the map needing to lose one. */
 .outline-demo {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
+  position: fixed;
+  inset: 0;
 }
 
 .outline-demo__svg {
-  width: min(85vw, 720px);
-  height: min(85vw, 720px);
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .trivia-overlay {

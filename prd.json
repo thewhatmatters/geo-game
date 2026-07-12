@@ -178,7 +178,7 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "Supabase is explicitly out of scope for this story and for v1 generally \u2014 localStorage only."
     },
     {

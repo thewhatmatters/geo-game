@@ -72,6 +72,12 @@ body {
   text-align: center;
 }
 
+.streak {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0 0 0.25rem;
+}
+
 .clock {
   font-size: 1.5rem;
   font-variant-numeric: tabular-nums;

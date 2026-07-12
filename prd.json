@@ -48,8 +48,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "restcountries.com is fully deprecated (confirmed by US-002); used the `world-countries` npm package as a local static snapshot of the same `borders` data instead. Special-cased Kosovo's code mismatch (world-countries uses 'UNK', US-002's geo data uses the slug 'KOSOVO' since it has no ISO numeric id) and dropped one documented restcountries data quirk (Sri Lanka listed as bordering India via the long-submerged Adam's Bridge) since CLAUDE.md explicitly names Sri Lanka as a 0-land-neighbor island example. Border references to non-sovereign territories absent from world-atlas's topology (Gibraltar, French Guiana, etc.) are dropped rather than pointing at countries with no outline data."
     },
     {
       "id": "US-004",

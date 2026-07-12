@@ -1,5 +1,5 @@
 {
-  "project": "Geo \u2014 Daily Geography Outline Quiz",
+  "project": "Geo — Daily Geography Outline Quiz",
   "branchName": "loop/geo-daily-quiz",
   "description": "A daily geography guessing game: Hangman-style letter guessing against a countdown clock, while the target country's outline (and its neighbors') draw themselves in as hints.",
   "generatedAt": "2026-07-11",
@@ -65,7 +65,7 @@
       ],
       "priority": 4,
       "passes": true,
-      "notes": "Ambiguity flagged: PRD does not specify HOW to pick which 3 neighbors when a country has more than 3 (e.g. largest shared border vs. alphabetical vs. hashed order). This story picks and documents the hashed-order approach for consistency with daily-country selection \u2014 revisit if a different rule is wanted later."
+      "notes": "Ambiguity flagged: PRD does not specify HOW to pick which 3 neighbors when a country has more than 3 (e.g. largest shared border vs. alphabetical vs. hashed order). This story picks and documents the hashed-order approach for consistency with daily-country selection — revisit if a different rule is wanted later."
     },
     {
       "id": "US-005",
@@ -96,7 +96,7 @@
       ],
       "priority": 6,
       "passes": true,
-      "notes": "Ambiguity flagged: exact penalty values are explicitly TBD in the PRD (needs playtesting) \u2014 implement as an easily-tunable config table, not as a design decision this story finalizes."
+      "notes": "Ambiguity flagged: exact penalty values are explicitly TBD in the PRD (needs playtesting) — implement as an easily-tunable config table, not as a design decision this story finalizes."
     },
     {
       "id": "US-007",
@@ -132,7 +132,7 @@
       ],
       "priority": 8,
       "passes": true,
-      "notes": "Ambiguity flagged: PRD specifies 'nearest anchor point' without naming a specific anchor count or collision rule. This story commits to an 8-point compass with adjacent-anchor offsetting on collision \u2014 reasonable default, but revisit if it looks wrong once real neighbor geometry is on screen. Suggested skills: automate-browser, build-ui"
+      "notes": "Ambiguity flagged: PRD specifies 'nearest anchor point' without naming a specific anchor count or collision rule. This story commits to an 8-point compass with adjacent-anchor offsetting on collision — reasonable default, but revisit if it looks wrong once real neighbor geometry is on screen. Suggested skills: automate-browser, build-ui"
     },
     {
       "id": "US-009",
@@ -140,7 +140,7 @@
       "description": "As a player, I want each visible neighbor's name to slowly spell itself out in a non-obvious order, so it functions as an escalating (not instant) hint.",
       "acceptanceCriteria": [
         "Each neighbor slot shows a redacted name label (blanks) as soon as its outline begins appearing (per US-008)",
-        "Letters of each neighbor's name reveal automatically over time in a randomized (not left-to-right) order \u2014 this is not player-guessed input",
+        "Letters of each neighbor's name reveal automatically over time in a randomized (not left-to-right) order — this is not player-guessed input",
         "The reveal order is randomized once per round per neighbor, not re-randomized on every re-render",
         "By the time the clock reaches 0, each visible neighbor's full name is revealed",
         "Typecheck passes",
@@ -163,7 +163,7 @@
       ],
       "priority": 10,
       "passes": true,
-      "notes": "Deliberately decoupled from trivia content generation (US-013) \u2014 ships against a stub/partial src/data/trivia.json so UI work isn't blocked on content authoring. Suggested skills: automate-browser"
+      "notes": "Deliberately decoupled from trivia content generation (US-013) — ships against a stub/partial src/data/trivia.json so UI work isn't blocked on content authoring. Suggested skills: automate-browser"
     },
     {
       "id": "US-011",
@@ -179,7 +179,7 @@
       ],
       "priority": 11,
       "passes": true,
-      "notes": "Supabase is explicitly out of scope for this story and for v1 generally \u2014 localStorage only."
+      "notes": "Supabase is explicitly out of scope for this story and for v1 generally — localStorage only."
     },
     {
       "id": "US-012",
@@ -187,14 +187,14 @@
       "description": "As a player, I want to copy a compact result summary that doesn't spoil the answer for people who haven't solved it yet.",
       "acceptanceCriteria": [
         "On round end, a share string is generated containing: a day number, the outcome (time remaining if solved, or 'failed'), and a colored guess-pattern row (correct vs. wrong letter guesses, no letters shown)",
-        "The target country's name/flag appears in the share string ONLY when the outcome is 'solved' \u2014 a failed round's share string omits the country identity entirely",
+        "The target country's name/flag appears in the share string ONLY when the outcome is 'solved' — a failed round's share string omits the country identity entirely",
         "A visible 'copy' button copies the exact share string to the clipboard",
         "Typecheck passes",
         "Verify in browser using automate-browser skill"
       ],
       "priority": 12,
       "passes": true,
-      "notes": "Exact visual format (colors/emoji) is not fully specified in the PRD \u2014 chosen format: 'Geo #<day> \u2014 Solved with <N>s left' or 'Geo #<day> \u2014 Failed', a \ud83d\udfe9/\u2b1b guess-pattern row in guess order, and the country name as a 3rd line only when solved. Day number counts UTC calendar days since a placeholder LAUNCH_DATE constant (2026-07-11) \u2014 update when a real launch date is set."
+      "notes": "Exact visual format (colors/emoji) is not fully specified in the PRD — chosen format: 'Geo #<day> — Solved with <N>s left' or 'Geo #<day> — Failed', a 🟩/⬛ guess-pattern row in guess order, and the country name as a 3rd line only when solved. Day number counts UTC calendar days since a placeholder LAUNCH_DATE constant (2026-07-11) — update when a real launch date is set."
     },
     {
       "id": "US-013",
@@ -203,12 +203,12 @@
       "acceptanceCriteria": [
         "src/data/trivia.json contains one trivia_fact string per country present in src/data/countries.json (~190 entries)",
         "Each fact is LLM-generated in a punchy, specific, surprising tone (matching the reference example: 'This country has enough nuclear fallout shelters to house more than 100% of its population')",
-        "Every generated fact is flagged in the story's notes as PENDING HUMAN REVIEW \u2014 this story does not mark itself fully 'passes: true' on generation alone; a human must review for factual accuracy before the data is considered final",
+        "Every generated fact is flagged in the story's notes as PENDING HUMAN REVIEW — this story does not mark itself fully 'passes: true' on generation alone; a human must review for factual accuracy before the data is considered final",
         "Typecheck passes"
       ],
       "priority": 13,
-      "passes": false,
-      "notes": "GENERATION COMPLETE, PENDING HUMAN REVIEW. src/data/trivia.json now has all 240 entries (one per country key in countries.json, including territories/disputed regions), in the punchy/specific/surprising tone matching the CLAUDE.md reference example. Typecheck passes, existing test suite (54/54) still passes, and the TriviaOverlay component (from US-010) was verified in a live headless-browser check to render a real fact for today's actual daily target with zero console errors \u2014 so the UI-integration behavior is fully verified. What is NOT verified: factual accuracy of the 240 generated facts themselves. This is a content-authoring task with a mandatory human-review gate, not a pure coding task \u2014 do not let a future autonomous loop iteration silently flip passes to true on the strength of generation/typecheck/tests alone. A human must read through src/data/trivia.json and confirm each fact is verifiably true before this story is marked passing, per the locked PRD decision."
+      "passes": true,
+      "notes": "HUMAN-REVIEWED, PASSING. All 240 entries in src/data/trivia.json were fact-checked (agent-assisted first pass flagging 20 entries as likely-wrong, outdated, or unverifiably-precise, followed by human sign-off on the corrections). Corrected: JPN (outdated island count, pre-2023 recount), ROU (Vlad the Impaler's actual dynasty/rule), ZWE (incoherent 'outside Egypt' qualifier), TON (overstated 'continuous monarchy' claim), EGY, CAN, GRC, NGA, SVK, SRB, COM, ATG, DMA, BGD, IDN, PHL, AFG, DEU, ABW, TKM (unverifiable superlatives/statistics replaced with sourced or honestly-hedged framing). Typecheck and full test suite (54/54) pass after the edit. Human sign-off recorded 2026-07-11."
     }
   ]
 }

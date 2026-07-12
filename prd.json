@@ -193,8 +193,8 @@
         "Verify in browser using automate-browser skill"
       ],
       "priority": 12,
-      "passes": false,
-      "notes": "Exact visual format (colors/emoji) is not fully specified in the PRD \u2014 this story should pick a concrete, readable format and document it in code comments as the working default. Suggested skills: automate-browser"
+      "passes": true,
+      "notes": "Exact visual format (colors/emoji) is not fully specified in the PRD \u2014 chosen format: 'Geo #<day> \u2014 Solved with <N>s left' or 'Geo #<day> \u2014 Failed', a \ud83d\udfe9/\u2b1b guess-pattern row in guess order, and the country name as a 3rd line only when solved. Day number counts UTC calendar days since a placeholder LAUNCH_DATE constant (2026-07-11) \u2014 update when a real launch date is set."
     },
     {
       "id": "US-013",

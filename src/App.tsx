@@ -1,15 +1,18 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Keyboard } from "./components/Keyboard";
 import { CountryOutline } from "./components/CountryOutline";
 import { NeighborsLayer } from "./components/NeighborsLayer";
 import { TriviaOverlay } from "./components/TriviaOverlay";
+import { ShareResult } from "./components/ShareResult";
 import { getDailyCountry } from "./lib/game/dailyCountry";
 import { useGameRound } from "./lib/game/useGameRound";
 import { computeNeighborSlots } from "./lib/geo/compass";
 import { useStreak } from "./lib/streak/useStreak";
+import { generateShareString, getDayNumber } from "./lib/share";
 
 const daily = getDailyCountry(new Date());
 const neighborSlots = computeNeighborSlots(daily);
+const dayNumber = getDayNumber(new Date());
 
 function App() {
   const round = useGameRound(daily.target);
@@ -21,6 +24,17 @@ function App() {
     recordedRef.current = true;
     recordOutcome(round.status === "solved" ? "solved" : "failed");
   }, [round.status, recordOutcome]);
+
+  const shareString = useMemo(() => {
+    if (round.status === "running") return null;
+    return generateShareString({
+      dayNumber,
+      status: round.status,
+      remainingSeconds: round.remainingSeconds,
+      guesses: round.guesses,
+      targetName: daily.target.name,
+    });
+  }, [round.status, round.remainingSeconds, round.guesses]);
 
   return (
     <div className="app">
@@ -52,6 +66,7 @@ function App() {
           {round.status === "solved" ? "Solved!" : "Failed"}
         </p>
       )}
+      {shareString && <ShareResult shareString={shareString} />}
       <Keyboard
         guesses={round.guesses}
         onGuess={round.guessLetter}

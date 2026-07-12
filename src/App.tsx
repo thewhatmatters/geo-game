@@ -1,6 +1,7 @@
 import { Keyboard } from "./components/Keyboard";
 import { CountryOutline } from "./components/CountryOutline";
 import { NeighborsLayer } from "./components/NeighborsLayer";
+import { TriviaOverlay } from "./components/TriviaOverlay";
 import { getDailyCountry } from "./lib/game/dailyCountry";
 import { useGameRound } from "./lib/game/useGameRound";
 import { computeNeighborSlots } from "./lib/geo/compass";
@@ -23,6 +24,7 @@ function App() {
           completion={round.outlineCompletion}
           className="outline-demo__svg"
         />
+        <TriviaOverlay code={daily.targetCode} />
         <NeighborsLayer
           slots={neighborSlots}
           visible={round.neighborsVisible}

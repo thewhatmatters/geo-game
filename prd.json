@@ -162,7 +162,7 @@
         "Verify in browser using automate-browser skill"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "Deliberately decoupled from trivia content generation (US-013) \u2014 ships against a stub/partial src/data/trivia.json so UI work isn't blocked on content authoring. Suggested skills: automate-browser"
     },
     {

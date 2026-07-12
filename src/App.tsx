@@ -1,18 +1,26 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Keyboard } from "./components/Keyboard";
-import { CountryOutline } from "./components/CountryOutline";
+import { CountryPath } from "./components/CountryOutline";
 import { NeighborsLayer } from "./components/NeighborsLayer";
 import { TriviaOverlay } from "./components/TriviaOverlay";
 import { ShareResult } from "./components/ShareResult";
 import { getDailyCountry } from "./lib/game/dailyCountry";
 import { useGameRound } from "./lib/game/useGameRound";
-import { computeNeighborSlots } from "./lib/geo/compass";
+import { computeGeoScene } from "./lib/geo/scene";
 import { useStreak } from "./lib/streak/useStreak";
 import { generateShareString, getDayNumber } from "./lib/share";
 
 const daily = getDailyCountry(new Date());
-const neighborSlots = computeNeighborSlots(daily);
+const scene = computeGeoScene(daily);
 const dayNumber = getDayNumber(new Date());
+
+// Desired on-screen sizes (px) for the target outline stroke and neighbor
+// labels, converted to viewBox user-units via the scene's pxScale so they
+// read as a consistent size regardless of how large the target's true
+// geographic bounding box is.
+const TARGET_STROKE_PX = 1.75;
+const NEIGHBOR_STROKE_PX = 1;
+const NEIGHBOR_LABEL_PX = 11;
 
 function App() {
   const round = useGameRound(daily.target);
@@ -46,17 +54,22 @@ function App() {
         {Math.ceil(round.remainingSeconds)}s
       </p>
       <div className="outline-demo">
-        <CountryOutline
-          path={daily.target.path}
-          completion={round.outlineCompletion}
-          className="outline-demo__svg"
-        />
-        <TriviaOverlay code={daily.targetCode} />
-        <NeighborsLayer
-          slots={neighborSlots}
-          visible={round.neighborsVisible}
-          completion={round.neighborCompletion}
-        />
+        <svg viewBox={scene.viewBox} className="outline-demo__svg" xmlns="http://www.w3.org/2000/svg">
+          <CountryPath
+            path={daily.target.path}
+            completion={round.outlineCompletion}
+            strokeWidth={TARGET_STROKE_PX * scene.pxScale}
+          />
+          <NeighborsLayer
+            slots={scene.neighbors}
+            visible={round.neighborsVisible}
+            completion={round.neighborCompletion}
+            strokeWidth={NEIGHBOR_STROKE_PX * scene.pxScale}
+            labelFontSize={NEIGHBOR_LABEL_PX * scene.pxScale}
+            viewBox={scene.viewBox}
+          />
+        </svg>
+        {!round.neighborsVisible && <TriviaOverlay code={daily.targetCode} />}
       </div>
       <p className="display-name" data-testid="display-name">
         {round.displayName}

@@ -15,10 +15,15 @@ countries.registerLocale(en);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_PATH = path.join(__dirname, '../src/data/countries-geo.json');
 
-// Fixed square viewBox every country's path is projected into (0 0 SIZE SIZE).
-// CountryOutline (US-005) renders every outline against this same viewBox so
-// tiny and huge countries both fill their box consistently.
-const VIEWBOX_SIZE = 200;
+// Every country is projected into ONE shared coordinate frame (not an
+// independent per-country fit-to-box) so that a target and its neighbors'
+// paths share real relative scale and position — a neighbor's border lines
+// up with the target's by construction, rather than two independently-
+// normalized shapes placed near each other. The app computes a per-round
+// viewBox from the target's own bounding box at render time (see
+// src/lib/geo/scene.ts); WORLD_SIZE just needs to be large enough that
+// coordinates aren't crushed into a tiny sub-pixel range.
+const WORLD_SIZE = 4000;
 
 // A handful of Natural Earth entries (disputed/minor territories) carry no
 // ISO 3166-1 numeric id at all, so they have no alpha-3 code to key by. Per
@@ -54,6 +59,11 @@ for (const geoJsonFeature of collection.features) {
   groups.get(code).geometries.push(geoJsonFeature.geometry);
 }
 
+// One projection, fit to the whole world once — every country's path comes
+// out of the SAME projection, so their coordinates are directly comparable.
+const projection = geoEquirectangular().fitSize([WORLD_SIZE, WORLD_SIZE / 2], collection);
+const pathGenerator = geoPath(projection);
+
 const result = {};
 for (const [code, { name, geometries }] of groups) {
   const mergedGeometry =
@@ -61,8 +71,6 @@ for (const [code, { name, geometries }] of groups) {
       ? geometries[0]
       : { type: 'GeometryCollection', geometries };
 
-  const projection = geoEquirectangular().fitSize([VIEWBOX_SIZE, VIEWBOX_SIZE], mergedGeometry);
-  const pathGenerator = geoPath(projection);
   const svgPath = pathGenerator(mergedGeometry);
   const [lng, lat] = geoCentroid(mergedGeometry);
 

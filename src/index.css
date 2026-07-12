@@ -1,17 +1,26 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
   font-family: system-ui, sans-serif;
 }
 
+html,
 body {
   margin: 0;
-  display: flex;
   min-height: 100vh;
+  background: #000;
+  color: #fff;
+}
+
+body {
+  display: flex;
   place-items: center;
   justify-content: center;
+  padding: 1.5rem 0;
+  box-sizing: border-box;
 }
 
 .app {
+  width: min(95vw, 900px);
   text-align: center;
 }
 
@@ -24,8 +33,8 @@ body {
 }
 
 .outline-demo__svg {
-  width: 320px;
-  height: 320px;
+  width: min(85vw, 720px);
+  height: min(85vw, 720px);
 }
 
 .trivia-overlay {
@@ -33,48 +42,26 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 240px;
+  width: min(60%, 420px);
   margin: 0;
   padding: 0.5rem;
-  font-size: 0.8rem;
-  line-height: 1.3;
+  font-size: 1rem;
+  line-height: 1.4;
   text-align: center;
+  color: #fff;
   pointer-events: none;
+  transition: opacity 0.3s ease;
 }
 
-.neighbors-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.neighbors-layer__slot {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 70px;
-  height: 70px;
-  margin: -35px 0 0 -35px;
-  opacity: 0.65;
-}
-
-.neighbors-layer__outline {
-  width: 100%;
-  height: 100%;
-}
-
-.neighbors-layer__name {
-  margin: 0.15rem 0 0;
-  font-size: 0.6rem;
-  letter-spacing: 0.08em;
-  font-weight: 600;
-  white-space: nowrap;
-  text-align: center;
-}
+/* Neighbor outlines + labels render as SVG children of .outline-demo__svg
+   itself now (see NeighborsLayer, App.tsx) — true relative position/scale
+   from the shared projection, not CSS-positioned boxes. Nothing to style
+   here beyond what the SVG elements set inline (currentColor, computed
+   font-size). */
 
 .streak {
   font-size: 0.9rem;
-  color: #666;
+  color: #999;
   margin: 0 0 0.25rem;
 }
 
@@ -110,10 +97,10 @@ body {
 .keyboard__key {
   min-width: 2rem;
   padding: 0.5rem 0;
-  border: 1px solid #888;
+  border: 1px solid #555;
   border-radius: 4px;
-  background: #e8e8e8;
-  color: #111;
+  background: #1a1a1a;
+  color: #fff;
   font-weight: 600;
   cursor: pointer;
 }
@@ -123,23 +110,24 @@ body {
 }
 
 .keyboard__key--correct {
-  background: #4caf50;
-  color: white;
-  border-color: #388e3c;
+  background: #2e7d32;
+  color: #fff;
+  border-color: #4caf50;
 }
 
 .keyboard__key--wrong {
-  background: #b0b0b0;
-  color: #444;
-  border-color: #888;
+  background: #2a2a2a;
+  color: #666;
+  border-color: #444;
 }
 
 .give-up {
   margin-top: 1rem;
   padding: 0.5rem 1.25rem;
-  border: 1px solid #888;
+  border: 1px solid #555;
   border-radius: 4px;
-  background: #f5f5f5;
+  background: #111;
+  color: #fff;
   cursor: pointer;
 }
 
@@ -160,17 +148,19 @@ body {
   font-family: inherit;
   white-space: pre-wrap;
   text-align: center;
-  background: #f5f5f5;
-  border: 1px solid #ccc;
+  background: #111;
+  border: 1px solid #444;
   border-radius: 6px;
   padding: 0.75rem 1rem;
   margin: 0;
+  color: #fff;
 }
 
 .share-result__copy {
   padding: 0.5rem 1.25rem;
-  border: 1px solid #888;
+  border: 1px solid #555;
   border-radius: 4px;
-  background: #e8e8e8;
+  background: #1a1a1a;
+  color: #fff;
   cursor: pointer;
 }

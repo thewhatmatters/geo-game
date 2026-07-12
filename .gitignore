@@ -4,3 +4,10 @@ dist-ssr
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# tsconfig.node.json is a composite TS project (required for project
+# references) so it can't set noEmit — `tsc -b` inevitably emits
+# vite.config's compiled output next to the source. Harmless build
+# byproduct, not source.
+/vite.config.js
+/vite.config.d.ts

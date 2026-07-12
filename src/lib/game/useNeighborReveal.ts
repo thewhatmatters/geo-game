@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import type { NeighborSlot } from "../geo/compass";
+import type { NeighborSlot } from "../geo/scene";
 import { revealedNeighborName, shuffleLetterPositions } from "./neighborReveal";
 
 export interface NeighborReveal {

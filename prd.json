@@ -208,7 +208,7 @@
       ],
       "priority": 13,
       "passes": false,
-      "notes": "This is a content-authoring task with a mandatory human-review gate, not a pure coding task \u2014 do not let an autonomous loop iteration silently treat LLM-generated trivia as fact-checked. Flag for explicit human review before shipping, per the locked PRD decision."
+      "notes": "GENERATION COMPLETE, PENDING HUMAN REVIEW. src/data/trivia.json now has all 240 entries (one per country key in countries.json, including territories/disputed regions), in the punchy/specific/surprising tone matching the CLAUDE.md reference example. Typecheck passes, existing test suite (54/54) still passes, and the TriviaOverlay component (from US-010) was verified in a live headless-browser check to render a real fact for today's actual daily target with zero console errors \u2014 so the UI-integration behavior is fully verified. What is NOT verified: factual accuracy of the 240 generated facts themselves. This is a content-authoring task with a mandatory human-review gate, not a pure coding task \u2014 do not let a future autonomous loop iteration silently flip passes to true on the strength of generation/typecheck/tests alone. A human must read through src/data/trivia.json and confirm each fact is verifiably true before this story is marked passing, per the locked PRD decision."
     }
   ]
 }

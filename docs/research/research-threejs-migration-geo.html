@@ -1,0 +1,130 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Three.js for the geo daily game — feasibility, techniques, and migration paths — deep-research</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --fg: #111; --muted: #555; --line: #ddd; --bg: #fff;
+    --code-bg: #f4f4f5; --link: #2563eb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e7e7e7; --muted: #9aa0a6; --line: #2a2a2a; --bg: #161616;
+      --code-bg: #1f1f1f; --link: #79a8ff;
+    }
+  }
+  html, body { background: var(--bg); color: var(--fg); }
+  body {
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    max-width: 800px; margin: 2rem auto; padding: 0 1rem;
+  }
+  h1 { margin: 0 0 .25rem; font-size: 1.85rem; }
+  h2 {
+    margin: 2rem 0 .5rem; padding-bottom: .2rem;
+    border-bottom: 1px solid var(--line); font-size: 1.2rem;
+  }
+  h3 { margin: 1.25rem 0 .35rem; font-size: 1.0rem; color: var(--muted); }
+  a { color: var(--link); }
+  .meta { color: var(--muted); font-size: .9rem; margin: 0 0 1.25rem; }
+  .question {
+    border-left: 3px solid var(--line); padding: .35rem .75rem;
+    color: var(--muted); margin: 0 0 1rem; font-style: italic;
+  }
+  .summary { margin: 0 0 2rem; }
+  section p { white-space: pre-wrap; margin: .25rem 0 0; }
+  pre, code {
+    background: var(--code-bg); border-radius: 4px;
+    font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  pre { padding: .75rem; overflow-x: auto; }
+  code { padding: 0 .25rem; }
+  ol.sources li { margin: .25rem 0; }
+  .provider-tag {
+    display: inline-block; padding: 0 .35rem; margin-left: .35rem;
+    font-size: .75rem; color: var(--muted); border: 1px solid var(--line);
+    border-radius: 3px; vertical-align: 1px;
+  }
+  footer {
+    margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: .85rem;
+  }
+</style>
+
+<h1>Three.js for the geo daily game — feasibility, techniques, and migration paths</h1>
+<p class="meta">problem research &middot; depth: standard &middot; 2026-07-14</p>
+<p class="question">Can the geo daily-game&#x27;s current experience (SVG country-outline draw-on animation via Framer Motion pathLength, D3 geo projections, zoom/pan world-map reveal) be rebuilt or enhanced on Three.js — feasibility, techniques used by comparable Three.js map/globe games, line-drawing animation options, performance on mobile, and migration/hybrid paths?</p>
+<p class="summary">Yes, it&#x27;s feasible — the standard recipe is d3-geo projections feeding Three.js geometry, which several tutorials and libraries (globe.gl/three-globe) already package. But the game&#x27;s signature mechanic, a progressively drawing thin outline, is the *hardest* thing to reproduce in WebGL: native WebGL lines cap at 1px on common drivers, so you need triangulated &quot;fat lines&quot; (Line2/MeshLine) plus dash-offset or draw-range tricks, and crisp text labels need a separate SDF library (troika-three-text). The polished Three.js showcases (Stripe&#x27;s globe, Awwwards winners) get their wow factor from 3D globes, particle fields, and custom shaders — not from doing flat 2D outline maps better than SVG. For ~200 static paths with one animated stroke, SVG is already the right-sized tool; the strongest argument for Three.js is a deliberate *visual pivot* (3D globe, depth, shader effects), not a port of the current look. A hybrid path — keeping the DOM UI and mounting a WebGL canvas only for the map layer — is well-precedented via react-three-fiber and is the recommended way in if you go.</p>
+
+<section id="framing"><h2>Framing</h2><p>The current stack renders ~1 target + 3 neighbor outlines + a world-map reveal layer as SVG paths, animated with Framer Motion&#x27;s `pathLength`, projected with d3-geo, inside a React/Vite app with a DOM on-screen keyboard, score display, and dot-matrix clock. The question is not &quot;can Three.js draw a map&quot; (it can) but three narrower ones:
+
+1. Can the *specific signature effects* — progressive outline draw-on, redacted text labels, radial spotlight reveal — be reproduced or bettered in WebGL?
+2. Do the &quot;really good&quot; Three.js showcase experiences derive their quality from something this game would actually use?
+3. What&#x27;s the migration cost and the mobile performance/battery bill?
+
+Hidden assumption worth surfacing: the admired Three.js examples are mostly **3D** experiences (globes, depth, cameras, shaders). A faithful port of the current flat 2D map to Three.js buys almost none of that — the visual upgrade only materializes if the design itself goes 3D or shader-driven.</p></section>
+
+<section id="options"><h2>Options</h2><p>**Option A — Stay on SVG, polish harder.** SVG remains the recommended starting point for exactly this workload: guidance is to &quot;start with SVG&quot; and only move when object counts overwhelm it, since WebGL&#x27;s win is &quot;rendering large numbers of simple shapes&quot; ([SVG vs Canvas vs WebGL 2026 comparison](https://www.svggenie.com/blog/svg-vs-canvas-vs-webgl-performance-2025); [yWorks rendering-stack comparison](https://www.yworks.com/blog/svg-canvas-webgl)). SVG also now gets hardware-accelerated CSS transforms/animations independent of JS ([Stack Overflow: Canvas vs SVG vs div](https://stackoverflow.com/questions/5882716/html5-canvas-vs-svg-vs-div)). The game renders a few hundred paths at most — nowhere near SVG&#x27;s breaking point. Shader-like flourishes (glow, grain, vignette) can be approximated with SVG/CSS filters.
+
+**Option B — Full Three.js rebuild, same flat-map design.** Feasible: convert TopoJSON → GeoJSON, run coordinates through the same d3-geo projection, and build `THREE.Line`/mesh geometry from the projected points — a long-established pattern ([SmartJava: Three.js + D3.js geo rendering](http://www.smartjava.org/content/render-geographic-information-3d-threejs-and-d3js); [Stack Overflow: GeoJSON as mesh in three.js](https://stackoverflow.com/questions/40520463/how-can-i-draw-geojson-in-three-js-as-a-mesh-and-not-a-line-and-fill-with-color)). Filled country shapes require triangulating polygons (earcut/ShapeGeometry) rather than just stroking paths. This option re-implements everything the browser currently does for free (path stroking, dashing, text, antialiasing, hit-testing) for little visual gain — see Gotchas.
+
+**Option C — Visual pivot to a 3D globe on Three.js.** This is what the admired examples actually are. globe.gl / three-globe / react-globe.gl package country polygons, choropleths, arcs, and hex-binned surfaces on an interactive WebGL globe with a React wrapper ([globe.gl](https://globe.gl); [react-globe.gl](https://github.com/vasturiano/react-globe.gl)). Stripe&#x27;s landing-page globe — 60,000 shader-driven dots in a sunflower spiral with country masking via a color-coded PNG — is the canonical polished example, and its writeup documents the real effort level ([Stripe: building the globe](https://stripe.com/blog/globe), WebFetch full page). The zoom-out world-reveal mechanic maps naturally to a globe (zoom = camera dolly; the &quot;whole world visible&quot; surcharge = seeing the full sphere). This changes the game&#x27;s look substantially — target framing, neighbor compass slots, and outline recognizability (core to the game per CLAUDE.md&#x27;s projection decision) all need redesign, since a sphere reintroduces the foreshortening problems the equal-area flat projection was chosen to avoid.
+
+**Option D — Hybrid: WebGL map layer under the existing DOM UI.** Keep React DOM for keyboard/score/clock/share (they&#x27;re UI, and DOM text/accessibility is strictly better), mount a react-three-fiber `&lt;Canvas&gt;` for just the map scene. This is a well-documented production pattern: 14islands runs a persistent shared WebGL canvas behind DOM content with components opting in via a `useCanvas()` hook, keeping &quot;HTML/CSS as the foundational layer, with WebGL as an enhancement&quot; ([14islands: progressive enhancement with WebGL and React](https://medium.com/14islands/progressive-enhancement-with-webgl-and-react-71cd19e66d4), WebFetch full page). R3F&#x27;s docs and community consistently recommend this over hand-rolling Three.js lifecycle inside React, since React&#x27;s mount/unmount churn can repeatedly create/destroy WebGL contexts ([three.js forum: plain Three.js inside React](https://discourse.threejs.org/t/best-way-to-integrate-plain-three-js-inside-a-react-app/27049); [R3F introduction](https://r3f.docs.pmnd.rs/getting-started/introduction)). Their pitfalls all cluster around scroll-syncing DOM to canvas — which this game doesn&#x27;t have (fixed viewport, no scroll), so the hybrid is unusually clean here.</p></section>
+
+<section id="tradeoffs"><h2>Tradeoffs</h2><p>| Axis | A: SVG polish | B: Three.js flat port | C: 3D globe pivot | D: Hybrid layer |
+|---|---|---|---|---|
+| Draw-on outline animation | Native (`pathLength`) | Hard — see Gotchas | Hard, same reasons | Hard for the WebGL parts |
+| Text labels (neighbor names, solved label) | Native DOM/SVG text | Needs troika/SDF | Needs troika/SDF | Keep in DOM where possible |
+| Visual ceiling | Filters/CSS only | ~same as SVG | Highest (shaders, depth, particles) | High for map, DOM for UI |
+| Mobile perf/battery | Cheap for this shape count | Persistent GPU rasterization; Stripe had to disable antialiasing and pause animations for perf ([Stripe](https://stripe.com/blog/globe)) | Same, plus more geometry | Same as B/C for the canvas |
+| Bundle | 0 new bytes | three.js core is large and effectively not tree-shakeable as one module — a single 8KB regression in r181 was forum-worthy; the community treats core size as a known lump ([three.js forum: tree-shaking state](https://discourse.threejs.org/t/what-is-the-state-of-tree-shaking/33168); [8KB size-increase thread](https://discourse.threejs.org/t/8kb-gzipped-size-increase-in-0-181-0-recommendation-on-tooling-to-analyze-package-size/87880)) | + globe.gl on top | three.js + R3F + drei |
+| Migration cost | None | Rewrite all map rendering | Rewrite + redesign game framing | Rewrite map layer only |
+| Keeps &quot;outline recognizability&quot; design pillar | Yes | Yes | At risk (sphere foreshortening) | Yes |
+
+**The line-drawing problem, concretely** (this is the crux for a game whose core hint IS a drawing line): WebGL native lines have a driver-dependent max width — &quot;users running ANGLE (i.e. most Windows Chrome/Edge) get a maximum of 1.0, which is pretty useless&quot; — with no joins, caps, or reliable antialiasing; production apps use triangulated or instanced &quot;fat lines&quot; instead (MeshLine, Line2, extrude-polyline) ([Matt DesLauriers: Drawing Lines is Hard](https://mattdesl.svbtle.com/drawing-lines-is-hard), WebFetch full page). Progressive draw-on then can&#x27;t use Framer Motion; the equivalents are `setDrawRange` on line geometry ([Stack Overflow: animate drawing of a line](https://stackoverflow.com/questions/42229799/how-to-smoothly-animate-drawing-of-a-line)) — which does not work straightforwardly on Line2 because fat lines are instanced planes per segment ([three.js forum: setDrawRange on Line2](https://discourse.threejs.org/t/setdrawrange-on-three-line2/2891); [Line2 instancing internals](https://discourse.threejs.org/t/how-to-update-line2-dynamically/37913)) — or `LineDashedMaterial` dash-offset tricks, which have their own long-standing quirks (`computeLineDistances` required; gap/scale bugs) ([three.js forum: animate LineDashedMaterial](https://discourse.threejs.org/t/how-can-i-animate-a-linedashedmaterial/4732); [Stack Overflow: dashes don&#x27;t work](https://stackoverflow.com/questions/35781346/three-linedashedmaterial-dashes-dont-work)). MeshLine-based animation is the community&#x27;s polished answer ([Codrops: Animated Mesh Lines](https://tympanus.net/codrops/2019/01/08/animated-mesh-lines); [Wael Yasmina: animating lines with MeshLine](https://waelyasmina.net/articles/animating-lines-and-curves-in-three-js-with-meshline)) — all workable, none as simple as the current one-prop `pathLength`.
+
+**Text**: WebGL text is &quot;a small nightmare involving texture atlases and signed distance fields&quot;; troika-three-text is the de-facto solution ([WebGPU showcase on Troika](https://www.webgpu.com/showcase/troika-three-js-framework-webgl-text-rendering); [troika-three-text docs](https://protectwise.github.io/troika/troika-three-text)). The neighbor labels&#x27; slot-machine letter scramble would re-layout SDF text every frame — doable but a new performance surface. In the hybrid option, labels can stay as DOM overlays and skip this entirely.</p></section>
+
+<section id="recommendation"><h2>Recommendation</h2><p>**Don&#x27;t port the current design to Three.js — either stay on SVG (A) or commit to a real visual pivot via the hybrid path (D + C elements).** Rationale: at this object count SVG is inside its comfort zone and the sources are unanimous that WebGL&#x27;s advantage only appears at scale or in 3D ([yWorks](https://www.yworks.com/blog/svg-canvas-webgl); [SVG Genie](https://www.svggenie.com/blog/svg-vs-canvas-vs-webgl-performance-2025)); meanwhile the two things the game leans on hardest — thin animated strokes and text — are precisely WebGL&#x27;s two weakest primitives ([Drawing Lines is Hard](https://mattdesl.svbtle.com/drawing-lines-is-hard); [Troika writeup](https://www.webgpu.com/showcase/troika-three-js-framework-webgl-text-rendering)). *(inferred: combining the line-rendering and text sources with the game&#x27;s current design, a flat-map port would cost weeks and look near-identical.)*
+
+If the appetite is &quot;make it feel like the Awwwards examples,&quot; the honest version of that is Option C&#x27;s redesign — a globe or depth-staged scene with shader lighting — built as Option D&#x27;s hybrid (R3F canvas for the map, DOM for all UI), prototyped first with react-globe.gl to test whether outline-recognizability survives on a sphere before hand-building anything. A cheap intermediate worth trying first: keep SVG but add WebGL-style *post effects* (grain, glow, vignette) via CSS/SVG filters — it tests whether &quot;better UI&quot; actually means &quot;3D&quot; before paying the migration bill. Note also the project&#x27;s CLAUDE.md gotcha already warns against tile-map libraries as wrong-shaped; Three.js doesn&#x27;t violate that letter, but the same &quot;right tool for several fixed animated outlines&quot; spirit currently favors SVG.</p></section>
+
+<section id="precedents"><h2>Precedents</h2><p>- **Stripe&#x27;s globe** — the reference-quality Three.js geo experience: 60k dots, custom shaders, country masking via PNG lookup; they hit 60fps only after disabling antialiasing entirely, cutting geometry to ~20k dots, pausing animations on scroll, and keeping a static-image fallback ready ([Stripe blog](https://stripe.com/blog/globe), WebFetch full page). Signal: even a top-tier team treats mobile WebGL perf as a real budget, not a freebie.
+- **globe.gl / three-globe ecosystem** — packaged country-polygon choropleths, arcs, hex-bins on a WebGL globe, with a maintained React wrapper ([globe.gl](https://globe.gl); [react-globe.gl](https://github.com/vasturiano/react-globe.gl)). The fastest way to prototype Option C.
+- **14islands&#x27; site** — production hybrid DOM+R3F architecture with graceful no-WebGL degradation ([14islands](https://medium.com/14islands/progressive-enhancement-with-webgl-and-react-71cd19e66d4), WebFetch full page).
+- **Community globe tutorials** — a Three.js globe tutorial notes country borders end up drawn twice (each border shared by two countries) when rendering outline data naively ([Robot Bobby globe tutorial](https://www.youtube.com/watch?v=f4zncVufL_I)) — a small example of the extra geometry bookkeeping WebGL demands.
+- **Awwwards map collections** — the inspiration class of sites; predominantly WebGL/Three.js interactive 3D map experiences ([Awwwards maps collection](https://www.awwwards.com/awwwards/collections/maps-geolocation-streetview); [Awwwards Three.js collection](https://www.awwwards.com/awwwards/collections/three-js)).</p></section>
+
+<h2>Open questions</h2><ul><li>No source directly benchmarked *battery drain* of a persistent small WebGL canvas vs. an animated SVG on phones — the comparisons are frame-rate oriented. Follow-up: &quot;WebGL canvas idle power consumption mobile benchmark&quot;.</li><li>Whether outline-recognizability (the game&#x27;s core skill) survives on a 3D globe at target-country framing wasn&#x27;t researched — it&#x27;s a design/playtest question, not a search question. Prototype with react-globe.gl before deciding Option C.</li><li>Exact three.js core gzipped size for a current release wasn&#x27;t pinned to a number in the surfaced sources (community threads discuss regressions and tooling, not a headline figure). Follow-up: &quot;bundlephobia three@latest&quot; or build a probe bundle.</li><li>Comparable *daily geography games* (Worldle, Globle) rendering stacks weren&#x27;t surfaced this sweep — worth checking whether any genre peer uses WebGL at all. Follow-up: &quot;Globle worldle source rendering SVG or WebGL github&quot;.</li></ul>
+
+<h2>Sources</h2>
+<ol class="sources">
+<li><a href="https://mattdesl.svbtle.com/drawing-lines-is-hard" rel="noopener" target="_blank">Drawing Lines is Hard — Matt DesLauriers</a><span class="provider-tag">WebFetch (full page)</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://stripe.com/blog/globe" rel="noopener" target="_blank">To design and develop an interactive globe — Stripe</a><span class="provider-tag">WebFetch (full page)</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://medium.com/14islands/progressive-enhancement-with-webgl-and-react-71cd19e66d4" rel="noopener" target="_blank">Progressive Enhancement with WebGL and React — 14islands</a><span class="provider-tag">WebFetch (full page)</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://www.svggenie.com/blog/svg-vs-canvas-vs-webgl-performance-2025" rel="noopener" target="_blank">SVG vs Canvas vs WebGL: Which Should You Use? (2026) — SVG Genie</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://www.yworks.com/blog/svg-canvas-webgl" rel="noopener" target="_blank">SVG, Canvas, WebGL? Visualization options for the web — yWorks</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://stackoverflow.com/questions/5882716/html5-canvas-vs-svg-vs-div" rel="noopener" target="_blank">HTML5 Canvas vs. SVG vs. div — Stack Overflow</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="http://www.smartjava.org/content/render-geographic-information-3d-threejs-and-d3js" rel="noopener" target="_blank">Render geographic information in 3D with Three.js and D3.js — SmartJava</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://stackoverflow.com/questions/40520463/how-can-i-draw-geojson-in-three-js-as-a-mesh-and-not-a-line-and-fill-with-color" rel="noopener" target="_blank">How can I draw geoJSON in three.js as a mesh — Stack Overflow</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://globe.gl" rel="noopener" target="_blank">Globe.GL</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://github.com/vasturiano/react-globe.gl" rel="noopener" target="_blank">react-globe.gl — GitHub</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://discourse.threejs.org/t/best-way-to-integrate-plain-three-js-inside-a-react-app/27049" rel="noopener" target="_blank">Best way to integrate PLAIN Three.js inside a React app — three.js forum</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://r3f.docs.pmnd.rs/getting-started/introduction" rel="noopener" target="_blank">Introduction — React Three Fiber docs</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://discourse.threejs.org/t/setdrawrange-on-three-line2/2891" rel="noopener" target="_blank">setDrawRange on THREE.Line2 — three.js forum</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://discourse.threejs.org/t/how-to-update-line2-dynamically/37913" rel="noopener" target="_blank">How to update Line2 dynamically — three.js forum</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://stackoverflow.com/questions/42229799/how-to-smoothly-animate-drawing-of-a-line" rel="noopener" target="_blank">How to smoothly animate drawing of a line — Stack Overflow</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://discourse.threejs.org/t/how-can-i-animate-a-linedashedmaterial/4732" rel="noopener" target="_blank">How can I animate a LineDashedMaterial — three.js forum</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://stackoverflow.com/questions/35781346/three-linedashedmaterial-dashes-dont-work" rel="noopener" target="_blank">THREE.LineDashedMaterial — dashes don&#x27;t work — Stack Overflow</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://tympanus.net/codrops/2019/01/08/animated-mesh-lines" rel="noopener" target="_blank">Animated Mesh Lines — Codrops</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://waelyasmina.net/articles/animating-lines-and-curves-in-three-js-with-meshline" rel="noopener" target="_blank">Animating Lines and Curves in Three.js with MeshLine — Wael Yasmina</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://www.webgpu.com/showcase/troika-three-js-framework-webgl-text-rendering" rel="noopener" target="_blank">Troika: The Three.js Framework That Solved WebGL Text Rendering — webgpu.com</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://protectwise.github.io/troika/troika-three-text" rel="noopener" target="_blank">Troika 3D Text docs</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://discourse.threejs.org/t/what-is-the-state-of-tree-shaking/33168" rel="noopener" target="_blank">What is the state of tree-shaking? — three.js forum</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://discourse.threejs.org/t/8kb-gzipped-size-increase-in-0-181-0-recommendation-on-tooling-to-analyze-package-size/87880" rel="noopener" target="_blank">8KB gzipped size increase in 0.181.0 — three.js forum</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://www.youtube.com/watch?v=f4zncVufL_I" rel="noopener" target="_blank">Create a 3D Globe with Three.js — Robot Bobby (YouTube)</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://www.awwwards.com/awwwards/collections/maps-geolocation-streetview" rel="noopener" target="_blank">Maps, Geolocation, StreetView collection — Awwwards</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+<li><a href="https://www.awwwards.com/awwwards/collections/three-js" rel="noopener" target="_blank">Three.js collection — Awwwards</a><span class="provider-tag">Tavily</span><span class="meta"> &middot; accessed 2026-07-14</span></li>
+</ol>
+
+<footer>Generated by deep-research.</footer>

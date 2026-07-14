@@ -1,0 +1,204 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Geo 2.5D — migrating the map from SVG to Three.js — PRD</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --fg: #111; --muted: #555; --line: #ddd; --bg: #fff; --code-bg: #f4f4f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e7e7e7; --muted: #9aa0a6; --line: #2a2a2a; --bg: #161616;
+      --code-bg: #1f1f1f;
+    }
+  }
+  html, body { background: var(--bg); color: var(--fg); }
+  body {
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    max-width: 760px; margin: 2rem auto; padding: 0 1rem;
+  }
+  h1 { margin: 0 0 .25rem; font-size: 1.75rem; }
+  h2 {
+    margin: 2rem 0 .5rem; padding-bottom: .2rem;
+    border-bottom: 1px solid var(--line); font-size: 1.15rem;
+  }
+  .meta { color: var(--muted); font-size: .9rem; margin: 0 0 1.5rem; }
+  .summary {
+    border-left: 3px solid var(--line); padding: .35rem .75rem;
+    color: var(--muted); margin: 0 0 2rem;
+  }
+  section p { white-space: pre-wrap; margin: .25rem 0 0; }
+  pre, code {
+    background: var(--code-bg); border-radius: 4px;
+    font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  pre { padding: .75rem; overflow-x: auto; }
+  code { padding: 0 .25rem; }
+  footer {
+    margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: .85rem;
+  }
+</style>
+
+<h1>Geo 2.5D — migrating the map from SVG to Three.js</h1>
+<p class="meta">PRD · 2026-07-14 · synthesized from in-session</p>
+<p class="summary">Replace the SVG/Framer Motion map layer with the validated 2.5D extruded Three.js scene while every line of game logic and all DOM UI stays untouched.</p>
+
+<section id="problem"><h2>Problem</h2><p>The current flat SVG map plays well but doesn&#x27;t *look* like the experiences
+the project aspires to — the polished Three.js games and interactives the
+user cited as the bar (&quot;really good examples of games and projects done on
+Three.js&quot;). Visual depth is not polish here; per the user it&#x27;s part of the
+product: &quot;We want the user to feel like things are raising or 3D or just
+very much more appealing. That&#x27;s a big part of this experience.&quot;
+
+A research pass (`docs/research/research-threejs-migration-geo.md`)
+concluded a *flat* port to Three.js would cost weeks and look near-identical
+— but a deliberate 2.5D visual pivot is exactly where WebGL pays. A
+throwaway spike (`src/spike/ExtrudedMapSpike.tsx`, `?spike=3d`) validated
+that pivot end to end: look, rise animation, zoom-to-world camera, and
+redacted labels all work, reusing the existing game logic unchanged.</p></section>
+
+<section id="solution"><h2>Solution</h2><p>The map layer becomes a Three.js scene rendered via react-three-fiber; the
+game around it does not change. Spike-validated visual spec:
+
+- **Extruded country slabs** on a dark flat world plane: the daily target
+  as a light, lit slab; its 3 neighbors at the **same full height**
+  (user-preferred over tiered heights) in a darker material; all other
+  countries as barely-raised dark context outlines.
+- **Rise-in replaces draw-on**: countries animate up from the plane
+  (ease-out scale-z) instead of stroking their outlines — the &quot;things
+  raising&quot; feel. In the real game this rise is paced by the round clock,
+  taking over the role the Framer Motion `pathLength` draw-on plays today.
+- **Tilted perspective camera with a zoom rig**: default framing is low
+  and ~45° tilted on the centered target; zooming out lifts and pitches
+  the camera toward near-top-down, re-aiming from the target to the
+  world&#x27;s center, so full zoom-out reads like a proper world map. One
+  smoothed camera path driven by a single `zoomProgress` number — the
+  existing zoom-economy logic (`lib/game/zoom.ts`) plugs in unchanged.
+- **Perspective CSS3D labels**: neighbor names as real DOM text lying flat
+  on the slab tops via `CSS3DRenderer` (ships inside `three`), inheriting
+  the camera&#x27;s exact perspective. Reuses `useNeighborReveal` (slot-machine
+  scramble) and `layoutLabels` (collision nudging) verbatim. Approved
+  styling: Geist (not Geist Mono), weight 400, normal letter spacing,
+  ~13–14px on-screen equivalent at default framing (`LABEL_SCALE` 0.0038),
+  white locked letters / 40%-white scrambling letters.
+- **Hybrid DOM + canvas architecture** (research Option D): keyboard,
+  score, dot-matrix clock, trivia, share UI, give-up — all stay DOM,
+  layered over the canvas exactly as they layer over the SVG today.</p></section>
+
+<section id="ux_flow"><h2>UX flow</h2><p>Identical to the current game — same round structure, same inputs, same
+outcomes. What changes is purely how the map hints render:
+
+1. **Round start.** Clock starts; the target&#x27;s slab begins rising from the
+   dark world plane (paced to finish by ~40–50% of the clock, preserving
+   `HINT_ONSET_FRACTION` semantics). Trivia + letter blanks unchanged.
+2. **Neighbor hints.** Neighbor slabs rise on the same clock (finishing at
+   0:00), their perspective labels scrambling/locking letters via the
+   existing reveal pacing.
+3. **Zoom-out (optional).** Scroll/pinch/buttons pull the camera up and
+   back; same step penalties and world-reveal surcharge; drag-pan stays
+   elastic and free within the paid radius. Post-round zoom stays free.
+4. **Round end.** Solve → target name label + confetti as today (label
+   likely becomes a CSS3D or DOM element over the slab). Fail → country
+   stays hidden. Share string unchanged.</p></section>
+
+<section id="technical_architecture"><h2>Technical architecture</h2><p>```
+Keep (zero changes):
+  src/lib/game/**        clock, penalties, zoom economy, letter logic,
+                         daily selection, neighbor reveal, score
+  src/lib/streak/**      localStorage streak
+  src/lib/share/**       share string
+  src/lib/geo/pathBounds, labelLayout, scene (viewBox math reused for
+                         bounds/anchors even though the SVG viewBox goes)
+  DOM UI components      Keyboard, DotMatrixNumber, TriviaOverlay,
+                         ShareResult, score display, give-up
+
+Replace:
+  App.tsx SVG scene      -&gt; &lt;Canvas&gt; scene (r3f), from the spike:
+    CountryOutline (stroke draw-on)   -&gt; CountrySlab (ExtrudeGeometry +
+                                         EdgesGeometry, rise via scale.z)
+    WorldMapLayer (radial opacity)    -&gt; context slabs + lighting
+                                         (spotlight-equivalent TBD)
+    NeighborsLayer SVG labels         -&gt; CSS3DRenderer labels (portaled
+                                         React content, LabelProjector
+                                         pattern from spike)
+    SVG &lt;g&gt; zoom/pan transforms       -&gt; CameraRig (zoomProgress-driven
+                                         pose lerp, world-bounds-derived
+                                         far pose)
+
+New helpers (promote from spike, with tests):
+  pathToShapes.ts        M/L/Z SVG path -&gt; THREE.Shape[] (dataset paths
+                         are pure M/L/Z; holes currently render as
+                         islands — needs a proper ring-classification
+                         pass at migration time)
+
+Deps: three, @react-three/fiber@^8 (React 18), @types/three — already
+installed by the spike. No drei, no troika (DOM labels avoid WebGL text).
+```</p></section>
+
+<section id="data_model"><h2>Data model</h2><p>No changes. `src/data/countries.json` (name, path, centroid,
+neighbor_codes, unique_letters, is_island) already contains everything the
+3D scene consumes — the spike proved the existing SVG path strings convert
+directly to extrusion geometry at runtime.</p></section>
+
+<section id="pricing"><h2>Pricing</h2><p>Unchanged — free, no monetization, all dependencies free/open-source
+(three, r3f), consistent with the project&#x27;s standing constraint.</p></section>
+
+<section id="roadmap"><h2>Roadmap</h2><p>- **M1 — Scene foundation:** promote `pathToShapes` (+ ring/hole handling
+  + tests); `CountrySlab`, world plane, lighting as real components;
+  static scene renders today&#x27;s daily correctly at default framing.
+- **M2 — Game-loop wiring:** rise animations paced by the round clock
+  (target by `HINT_ONSET_FRACTION`, neighbors by full round);
+  `zoomProgress` bridged to `useGameRound`&#x27;s zoom economy (penalties,
+  surcharge, post-round free zoom); elastic drag-pan parity.
+- **M3 — Labels &amp; round end:** CSS3D label layer (reveal scramble,
+  collision layout, approved styling); solved-state target label;
+  confetti/share/outcome parity checks.
+- **M4 — Swap &amp; polish:** replace the SVG scene in `App.tsx` behind the
+  same round API; remove `?spike=3d` and `src/spike/`; fix Antarctica
+  over-lighting at world view; mobile perf pass (Stripe-style budget:
+  antialias off if needed, merged context geometry, pixel-ratio cap).
+- **Later:** camera drift/parallax juice; label leader lines for tiny
+  countries; per-country label scaling; possible post-solve &quot;all slabs
+  rise to level&quot; moment (user liked equal-height as a payoff idea).</p></section>
+
+<section id="risks"><h2>Risks</h2><p>- **Mobile performance is unmeasured.** ~190 extruded meshes + edges +
+  shadows on phone GPUs; Stripe needed antialias-off, geometry cuts, and
+  pause-on-scroll to hold 60fps. Mitigations identified but unproven here
+  — M4 gates the swap on a real phone-class test.
+- **Battery/thermal cost of an always-on WebGL canvas** vs. the idle-cheap
+  SVG — flagged in research, no direct benchmark exists.
+- **DOM labels can&#x27;t be occluded by geometry.** Invisible at the current
+  camera tilt, but a constraint on future camera moves (orbit would break
+  it; would force troika/SDF text).
+- **Hole rings render as raised islands** in the spike&#x27;s `pathToShapes`
+  (e.g. Lesotho) — must be fixed properly in M1, not carried over.
+- **13–14px labels flirt with the legibility floor on phones** once
+  foreshortened; may need a camera-distance-based boost (noted during
+  tuning, unresolved).
+- **The radial spotlight reveal has no 3D equivalent yet** — the SVG
+  world layer&#x27;s zoom-driven radial fade needs a lighting/opacity design in
+  the new scene (spike shows all context slabs statically).
+- **CLAUDE.md/PRD.md drift**: both still describe the SVG draw-on as the
+  core hint mechanic; must be updated when (not if) the migration lands,
+  or the docs contradict the shipped game.</p></section>
+
+<section id="open_questions"><h2>Open questions</h2><p>- Exact rise-animation pacing curve per layer (target vs neighbors vs
+  context), and whether context slabs animate at all during a round.
+- What the zoom-out *reveal* looks like in 3D (light radius? opacity by
+  distance from target? fog?) — the mechanic&#x27;s cost side is settled, the
+  presentation side isn&#x27;t.
+- Where the trivia overlay and solved-state country label live in the new
+  stack (DOM over canvas vs CSS3D on the slab).
+- Whether `?height=tiered` and other spike toggles survive as debug flags
+  or die with the spike.
+- Mobile perf budget numbers (target device class, minimum fps, pixel
+  ratio cap) — decide before M4, measure during it.
+- Whether the world-context slabs keep per-country `EdgesGeometry` or get
+  merged into one geometry for draw-call economy (matters for the perf
+  budget).
+- Keyboard/DOM overlap: does the tilted scene need a different vertical
+  centering scheme than the current `verticalOffsetPx` panel-measuring
+  approach?</p></section>
+
+<footer>Generated by generate-prd.</footer>

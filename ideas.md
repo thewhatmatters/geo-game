@@ -56,3 +56,28 @@ as-is — it requires solving each day (a failed/given-up round still
 zeroes `current_streak`), not a separate "opened the app" concept. No
 new state needed. The tier values above remain undecided/illustrative —
 only this one facet of the idea has been settled.
+
+## SVG depth-cue polish (salvaged from the shelved 2.5D migration)
+
+The Three.js 2.5D direction was explored, spiked, and deliberately
+shelved on 2026-07-14 (full record: `prd-3d-migration.md` status note +
+`docs/research/research-threejs-migration-geo.md`). What survives is the
+*motivation* — "things raising, more visual appeal" — deliverable as
+depth cues in the existing SVG stack, no WebGL, no new deps, each an
+afternoon-sized independent task:
+
+- **Soft shadow under the target outline** (SVG `feDropShadow` /
+  `feGaussianBlur` filter) — the single cheapest "it's an object, not a
+  line drawing" cue.
+- **Lift-and-settle on solve** — brief scale-up + shadow-spread + settle
+  transform on the solved country; pairs with the existing confetti
+  moment.
+- **Gentle parallax on drag-pan** — offset the world layer slightly less
+  than the target layer while panning (two layers already exist), giving
+  cheap depth separation. The pan machinery is already in App.tsx.
+- **Richer surface treatment** — subtle SVG gradient or grain on the
+  target's post-draw fill instead of the current flat
+  `rgba(255,255,255,0.12)`.
+
+Not scoped or committed — same parking-lot status as everything else in
+this file.

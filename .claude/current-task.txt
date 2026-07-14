@@ -1,1 +1,1 @@
-Geo: playtesting — scoring, dot-matrix clock, elastic pan; still uncommitted
+Geo: playtesting — mobile fixes, streak-multiplier idea; 3 files uncommitted

@@ -94,13 +94,18 @@ body {
   transition: transform 0.25s ease-out;
 }
 
+/* Top-left, paired with .score-display's top-right — deliberately NOT
+   bottom-right anymore: that pinned it directly over the on-screen
+   keyboard's bottom row on phone-height viewports (the keyboard's own
+   height varies and was never accounted for). The top corners always
+   have free space regardless of round state. */
 .zoom-controls {
   position: fixed;
-  right: 1rem;
-  bottom: 1rem;
+  left: 1rem;
+  top: 1rem;
   z-index: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 0.4rem;
   pointer-events: auto;
 }
@@ -291,12 +296,16 @@ body {
 
 .keyboard__row {
   display: flex;
-  gap: 0.3rem;
+  gap: clamp(0.15rem, 1vw, 0.3rem);
 }
 
 .keyboard__key {
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  /* Shrinks on narrow viewports instead of forcing the 10-key top row to
+     overflow the screen (it did, clipped at both edges, on every phone
+     width under ~480px before this) — caps at the original 2.75rem on
+     anything wide enough not to need shrinking. */
+  min-width: clamp(1.7rem, 8vw, 2.75rem);
+  min-height: clamp(1.7rem, 8vw, 2.75rem);
   padding: 0.5rem 0;
   border: none;
   border-radius: 10px;

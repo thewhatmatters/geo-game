@@ -26,3 +26,33 @@ Rough shape, needs real design before building:
   elsewhere? a generated image/card, like Wordle's colored-square grid?).
 
 Tabled for now — revisit when there's appetite to actually design it.
+
+## Streak-based score multiplier/bonus
+
+A score bonus for consecutive-day play, reusing the streak tracking that
+already exists (`src/lib/streak/`, `useStreak`'s `current_streak` —
+already increments on a solve, already resets to 0 on a failure or a
+missed day, per `recordRoundOutcome`). No new tracking needed, just a
+new bonus table (same "tunable table, not inline arithmetic" shape as
+`PENALTY_TIERS` in `clock.ts`) applied against `streak.current_streak`
+and added into that day's score once the round resolves.
+
+Draft tiers (illustrative, not final — needs the same playtesting pass
+as every other tuning constant in this project), escalating rather than
+flat-rate, capped at a 7-day streak so it doesn't grow unbounded:
+
+| Streak length | Bonus |
+|---|---|
+| 1 day | — (baseline) |
+| 2 days | +20 |
+| 3 days | +40 |
+| 4 days | +70 |
+| 5 days | +100 |
+| 6 days | +140 |
+| 7+ days (cap) | +200 |
+
+**Decided**: the multiplier rides on the existing solve-streak exactly
+as-is — it requires solving each day (a failed/given-up round still
+zeroes `current_streak`), not a separate "opened the app" concept. No
+new state needed. The tier values above remain undecided/illustrative —
+only this one facet of the idea has been settled.

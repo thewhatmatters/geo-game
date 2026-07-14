@@ -1,1 +1,1 @@
-Geo game: prd.json ready (13 stories), wiring project to vault next
+Geo: playtesting — scoring, dot-matrix clock, elastic pan; still uncommitted

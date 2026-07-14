@@ -20,6 +20,11 @@ export function getCountry(code: CountryCode): Country {
   return countries[code];
 }
 
+/** Every country keyed by code — used by the world-map backdrop layer (see WorldMapLayer), which renders all of them at once rather than looking each up individually. */
+export function getAllCountries(): Record<CountryCode, Country> {
+  return countries;
+}
+
 export interface DailySelection {
   date: string;
   targetCode: CountryCode;

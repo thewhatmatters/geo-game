@@ -21,6 +21,10 @@ export function getPenaltySeconds(uniqueLetterCount: number): number {
   return tier ? tier.penaltySeconds : PENALTY_TIERS[PENALTY_TIERS.length - 1].penaltySeconds;
 }
 
+/** Every this many CONSECUTIVE correct letter guesses (streak reset by any wrong guess) grants a flat time bonus — positive reinforcement to offset the wrong-guess-only penalty design. */
+export const CORRECT_STREAK_BONUS_INTERVAL = 2;
+export const CORRECT_STREAK_BONUS_SECONDS = 2;
+
 export type ClockStatus = "running" | "solved" | "failed";
 
 export interface ClockSnapshot {
@@ -36,9 +40,12 @@ export class GameClock {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private lastTickMs: number | null = null;
   private readonly listeners = new Set<Listener>();
+  /** A bonus can never push remainingSeconds past where the round started — otherwise a long correct streak could bank unbounded time. */
+  private readonly initialSeconds: number;
 
   constructor(durationSeconds: number = ROUND_DURATION_SECONDS) {
     this.remainingSeconds = durationSeconds;
+    this.initialSeconds = durationSeconds;
   }
 
   getSnapshot(): ClockSnapshot {
@@ -82,8 +89,20 @@ export class GameClock {
   }
 
   applyWrongGuess(uniqueLetterCount: number): void {
+    this.applyPenalty(getPenaltySeconds(uniqueLetterCount));
+  }
+
+  /** Generic flat time deduction — used by both the wrong-guess penalty and the zoom-out penalty. */
+  applyPenalty(seconds: number): void {
     if (this.status !== "running") return;
-    this.tick(getPenaltySeconds(uniqueLetterCount));
+    this.tick(seconds);
+  }
+
+  /** Generic flat time addition — used by the correct-guess streak bonus. Clamped at the round's starting duration so a long streak can't bank time indefinitely. */
+  applyBonus(seconds: number): void {
+    if (this.status !== "running") return;
+    this.remainingSeconds = Math.min(this.initialSeconds, this.remainingSeconds + seconds);
+    this.emit();
   }
 
   solve(): void {

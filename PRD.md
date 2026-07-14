@@ -208,6 +208,13 @@ game finds real traction; not in scope now.
   leaderboard), playtested tuning of the 60s budget and penalty tiers,
   refined compass-anchor collision handling, possible untimed/practice
   mode for accessibility.
+- **B2:** Social login (Twitter/X, Facebook, etc.) so a per-round score
+  (a rescaled presentation of remaining time at solve — see
+  `lib/game/score.ts`) and daily streak can persist to an actual account
+  rather than just localStorage, plus native social sharing of results
+  tied to that account. Depends on the Supabase backend landing first
+  (social login needs a real backend, not just local persistence) — not
+  scoped or designed yet, flagged here so it isn't lost.
 
 ## Risks
 

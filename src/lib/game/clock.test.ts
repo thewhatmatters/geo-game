@@ -50,6 +50,27 @@ describe("GameClock", () => {
     expect(clock.getSnapshot().remainingSeconds).toBe(30);
   });
 
+  it("adds time on a bonus", () => {
+    const clock = new GameClock(60);
+    clock.tick(20); // 40 remaining
+    clock.applyBonus(2);
+    expect(clock.getSnapshot().remainingSeconds).toBe(42);
+  });
+
+  it("clamps a bonus at the round's starting duration", () => {
+    const clock = new GameClock(60);
+    clock.tick(1); // 59 remaining
+    clock.applyBonus(5); // would be 64, clamped to 60
+    expect(clock.getSnapshot().remainingSeconds).toBe(60);
+  });
+
+  it("ignores a bonus once the round has ended", () => {
+    const clock = new GameClock(60);
+    clock.giveUp();
+    clock.applyBonus(2);
+    expect(clock.getSnapshot().remainingSeconds).toBe(60);
+  });
+
   it("transitions to failed when the clock reaches 0, clamped at 0", () => {
     const clock = new GameClock(5);
     clock.tick(10);

@@ -8,6 +8,8 @@ export interface CountryPathProps {
   completion: number;
   strokeColor?: string;
   strokeWidth?: number;
+  /** Fill color, defaults to none (outline only). Callers can swap this in once completion reaches 100 for a "filled in" look (see NeighborsLayer). */
+  fillColor?: string;
 }
 
 /** Just the animated outline stroke, no wrapping <svg> — for composing multiple countries inside one shared-viewBox scene (see NeighborsLayer). */
@@ -16,13 +18,14 @@ export function CountryPath({
   completion,
   strokeColor = "currentColor",
   strokeWidth = 1.5,
+  fillColor = "none",
 }: CountryPathProps) {
   const pathLength = Math.min(100, Math.max(0, completion)) / 100;
 
   return (
     <motion.path
       d={path}
-      fill="none"
+      fill={fillColor}
       stroke={strokeColor}
       strokeWidth={strokeWidth}
       strokeLinecap="round"
@@ -30,6 +33,7 @@ export function CountryPath({
       initial={false}
       animate={{ pathLength, pathSpacing: 1 }}
       transition={{ duration: 0.3, ease: "linear" }}
+      style={{ transition: "fill 0.6s ease" }}
     />
   );
 }

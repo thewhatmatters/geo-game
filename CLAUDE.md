@@ -38,13 +38,18 @@ This *is* the product; get it right before optimizing anything else.
   design and is now superseded.
 
 **Hints — continuous, driven by the same clock**
-- The target country's outline draws itself alone for the first
-  ~40–50% of the clock (hardest phase). A trivia fact is shown overlaid
-  on the outline while it draws.
-- Once time remaining drops below that threshold, three neighboring
-  countries' outlines begin appearing too, each with a redacted name
-  label that reveals letters in randomized order (automatic, not
-  player-guessed).
+- The target country's outline AND its (up to) three neighboring
+  countries' outlines all draw in **simultaneously from the very start**
+  of the round, finishing at 100% exactly as the clock hits 0. This
+  supersedes an earlier "staggered onset" design (neighbors delayed
+  until ~40–50% elapsed) — dropped because it visibly contradicted the
+  intended feel of hints accruing continuously as the clock runs down.
+- Each neighbor outline has a redacted name label that reveals letters
+  in randomized order (automatic, not player-guessed), paced by the
+  same simultaneous draw-in.
+- The target's own outline still finishes drawing faster than the
+  neighbors' — by ~40–50% of the clock — since it's the primary hint;
+  a trivia fact is shown overlaid on it only during that early window.
 - Neighbor slots are always fixed at **3**, positioned at their
   real-world compass direction relative to the target (snapped to the
   nearest anchor point; needs collision handling when multiple

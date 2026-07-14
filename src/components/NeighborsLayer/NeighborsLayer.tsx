@@ -6,6 +6,8 @@ import { layoutLabels, type LabelCandidate } from "../../lib/geo/labelLayout";
 
 /** Faint, muted stroke/label color for neighbor outlines — visually secondary to the target's full-white outline, rather than relying on element opacity. */
 const NEIGHBOR_COLOR = "rgba(255, 255, 255, 0.4)";
+/** Full white a letter turns the moment it's locked in — same white as the target's own outline/text, standing out from the still-scrambling NEIGHBOR_COLOR letters around it. */
+const REVEALED_COLOR = "#fff";
 
 export interface NeighborsLayerProps {
   slots: NeighborSlot[];
@@ -59,6 +61,7 @@ export function NeighborsLayer({ slots, visible, completion, strokeWidth, labelF
   // labels apart vertically rather than letting them overlap.
   const labels = layoutLabels(rawCandidates, frame, labelFontSize);
   const labelByCode = new Map(labels.map((l) => [l.code, l]));
+  const charsByCode = new Map(slots.map((slot, i) => [slot.code, reveals[i].chars]));
 
   return (
     <g data-testid="neighbors-layer">
@@ -80,11 +83,21 @@ export function NeighborsLayer({ slots, visible, completion, strokeWidth, labelF
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={labelFontSize}
-                fontWeight={600}
+                fontWeight={300}
+                fontFamily='"Geist Mono", monospace'
+                style={{ textTransform: "uppercase" }}
                 fill={NEIGHBOR_COLOR}
                 data-testid={`neighbor-name-${slot.code}`}
               >
-                {label.text}
+                {(charsByCode.get(slot.code) ?? []).map((c, i) => (
+                  <tspan
+                    key={i}
+                    fill={c.revealed ? REVEALED_COLOR : NEIGHBOR_COLOR}
+                    style={{ transition: "fill 0.3s ease" }}
+                  >
+                    {c.char}
+                  </tspan>
+                ))}
               </text>
             )}
           </g>

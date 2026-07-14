@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import countriesData from "../../data/countries.json";
 import type { Country } from "../game/dailyCountry";
-import { computeGeoScene, SCENE_RENDER_PX } from "./scene";
+import { computeGeoScene } from "./scene";
 
 const countries = countriesData as Record<string, Country>;
 
@@ -53,8 +53,23 @@ describe("computeGeoScene", () => {
     expect(distance).toBeLessThan(viewBoxWidth * 10);
   });
 
-  it("SCENE_RENDER_PX is a positive pixel size used to derive pxScale", () => {
-    expect(SCENE_RENDER_PX).toBeGreaterThan(0);
+  it("accepts an explicit renderPx and scales pxScale accordingly (matches the real viewport, not a stale fixed box)", () => {
+    const target = findTargetWithNeighbors();
+    const small = computeGeoScene({ target, neighborCodes: [] }, 320);
+    const large = computeGeoScene({ target, neighborCodes: [] }, 1440);
+
+    // Same viewBox (renderPx doesn't affect what's shown, only how big a
+    // "desired px" constant like stroke-width ends up in user-units).
+    expect(small.viewBox).toBe(large.viewBox);
+    // A bigger render size means fewer user-units per desired px.
+    expect(large.pxScale).toBeLessThan(small.pxScale);
+    expect(large.pxScale).toBeCloseTo(small.pxScale * (320 / 1440), 10);
+  });
+
+  it("defaults to a positive pxScale when renderPx is omitted (non-browser callers, e.g. tests)", () => {
+    const target = findTargetWithNeighbors();
+    const scene = computeGeoScene({ target, neighborCodes: [] });
+    expect(scene.pxScale).toBeGreaterThan(0);
   });
 
   it("clips a large neighbor's visibleBounds to the viewBox, even though its true bounds extend far outside it", () => {
@@ -101,5 +116,22 @@ describe("computeGeoScene", () => {
     const scene = computeGeoScene({ target, neighborCodes: ["AUS"] });
     const australia = scene.neighbors.find((n) => n.code === "AUS");
     expect(australia?.visibleBounds).toBeNull();
+  });
+
+  describe("maxZoom", () => {
+    it("returns a zoom multiplier greater than 1 (some zoom-out range always available)", () => {
+      const target = findTargetWithNeighbors();
+      const scene = computeGeoScene({ target, neighborCodes: [] });
+      expect(scene.maxZoom).toBeGreaterThan(1);
+    });
+
+    it("gives a small country a much larger maxZoom than a huge one (both need to reach the same world scale)", () => {
+      // Lesotho's own viewBox is tiny relative to the world; Russia's is
+      // (relatively) enormous — Lesotho needs a far bigger zoom multiplier
+      // to reveal the same fixed world width.
+      const small = computeGeoScene({ target: countries["LSO"], neighborCodes: [] });
+      const huge = computeGeoScene({ target: countries["RUS"], neighborCodes: [] });
+      expect(small.maxZoom).toBeGreaterThan(huge.maxZoom);
+    });
   });
 });

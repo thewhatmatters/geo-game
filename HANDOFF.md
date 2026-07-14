@@ -46,18 +46,16 @@ commit, three more things happened, all typechecked/tested (99 passing)
 
 ## Next steps
 
-1. **Commit the mobile fixes** (`src/index.css`, plus `ideas.md`'s
-   streak-decision update and this `HANDOFF.md`) — small diff, nothing
-   blocking, just hasn't been asked for yet this round.
-2. **CLAUDE.md is still stale** — carried over from before: its "locked
+1. **CLAUDE.md is still stale** — carried over from before: its "locked
    mechanics" section predates most of this whole extended session
    (zoom/pan, streak bonus, live score, dot-matrix clock, confetti, and
    now the mobile-responsive keyboard sizing). Still unresolved whether
    to fold it in.
-3. If the streak-multiplier idea gets picked up for real: the tier
+2. If the streak-multiplier idea gets picked up for real: the tier
    values (2 days → +20 etc.) are still illustrative/undecided — that's
    the next open question on that specific feature, not the
    solve-vs-login one (already settled).
+3. Nothing else is blocked — working tree is committed and clean.
 
 ## Key decisions (and why)
 
@@ -100,7 +98,7 @@ commit, three more things happened, all typechecked/tested (99 passing)
 
 ## Files & commands in play
 
-- Branch: `loop/geo-daily-quiz`, HEAD at `5d40e5b` + 3 uncommitted files.
+- Branch: `loop/geo-daily-quiz`, HEAD at `9837ea0`.
 - `npm run dev` / `npm run typecheck` / `npm run test -- --run` / `npm run build`
 - This round's touched files: `src/index.css` (`.keyboard__key`,
   `.keyboard__row`, `.zoom-controls`), `ideas.md`, `HANDOFF.md`.
@@ -109,16 +107,10 @@ commit, three more things happened, all typechecked/tested (99 passing)
 
 ## Git state
 
-Branch `loop/geo-daily-quiz`. Uncommitted:
-
-```
- M HANDOFF.md
- M ideas.md
- M src/index.css
-```
-
-Deliberately left uncommitted — user hasn't asked for a commit this
-round (see Next steps #1).
+Branch `loop/geo-daily-quiz`. Clean — this round's work (mobile fixes +
+docs) was committed as `9837ea0` ("Fix mobile keyboard overflow and
+zoom-control collision") at the end of the session, per explicit user
+confirmation. Not pushed anywhere.
 
 ## Don't redo
 

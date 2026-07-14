@@ -5,9 +5,11 @@ A daily geography guessing game, Wordle-adjacent but built around a live
 countdown clock rather than a fixed guess count. One target country per
 day, identical for every player. The player solves it via literal
 Hangman-style letter guessing against a 60-second clock, while the
-target's outline draws itself and — after the clock crosses a threshold —
-three neighboring countries' outlines and letters gradually reveal too.
-Greenfield, no code yet.
+target's outline and three neighboring countries' outlines/letters draw
+in simultaneously, and the player can optionally zoom out to reveal
+further world-map context at a time cost. Implemented and in active
+playtesting on branch `loop/geo-daily-quiz` — see `HANDOFF.md` for the
+current session's state.
 
 Full original design research (superseded in parts — see below) lives in
 the vault:
@@ -48,8 +50,10 @@ This *is* the product; get it right before optimizing anything else.
   in randomized order (automatic, not player-guessed), paced by the
   same simultaneous draw-in.
 - The target's own outline still finishes drawing faster than the
-  neighbors' — by ~40–50% of the clock — since it's the primary hint;
-  a trivia fact is shown overlaid on it only during that early window.
+  neighbors' — by ~40–50% of the clock — since it's the primary hint.
+  The trivia fact overlaid on it is no longer gated to that early
+  window: it now stays up for the whole round, and after the round
+  ends, so a solved/failed player can still read it.
 - Neighbor slots are always fixed at **3**, positioned at their
   real-world compass direction relative to the target (snapped to the
   nearest anchor point; needs collision handling when multiple
@@ -60,9 +64,50 @@ This *is* the product; get it right before optimizing anything else.
 - Countries with 0 land neighbors (islands, e.g. Iceland, Sri Lanka):
   included in the daily rotation as legitimately harder days — no
   neighbor hints available at all.
-- Countdown is shown as a small numeric readout, top-right corner —
-  deliberately unobtrusive since the outline itself is already an
-  implicit timer.
+- Countdown is shown as a prominent dot-matrix numeric readout in the
+  top-center header (`DotMatrixNumber`) — supersedes the original
+  "small, unobtrusive, top-right" spec; playtesting favored a more
+  legible display.
+- Every **2 consecutive correct** letter guesses (streak reset by any
+  wrong guess) grants a flat **+2s** time bonus — positive
+  reinforcement to offset the wrong-guess-only penalty design
+  (`CORRECT_STREAK_BONUS_INTERVAL`/`CORRECT_STREAK_BONUS_SECONDS` in
+  `lib/game/clock.ts`). Bonus time is clamped so it can never push the
+  clock past the round's starting duration.
+
+**Map exploration — zoom/pan (new mechanic, not in the original design)**
+- The player can scroll/pinch (or use on-screen +/− buttons, fixed
+  top-left) to zoom out beyond the default framing, revealing the
+  wider world map beyond the target + 3 fixed neighbors, at a flat
+  one-time time cost per zoom-out "step" crossed (`ZOOM_STEP` /
+  `ZOOM_PENALTY_SECONDS` in `lib/game/zoom.ts`) — zooming back in and
+  back out over already-seen territory never re-charges.
+- Reaching maximum zoom (the whole world visible) charges one
+  additional one-time surcharge on top of the normal per-step cost
+  (`WORLD_REVEAL_SURCHARGE_SECONDS`) — a much stronger hint than an
+  ordinary step.
+- Drag-to-pan is free but bounded to a radius proportional to how far
+  the player has already zoomed out (`PAN_RADIUS_FACTOR`) — panning
+  can never reveal more than the current zoom level already paid for.
+  Releasing the drag snaps elastically back to center.
+- Zoom stays available after the round ends (solved or failed) so the
+  player can freely explore the revealed map — no further time cost
+  applies once the clock has stopped.
+
+**Live score**
+- A running score is always visible (fixed top-right corner, paired
+  with the top-left zoom controls): `SCORE_BASE_POINTS` (500) +
+  `remainingSeconds * SCORE_SECONDS_MULTIPLIER` (10/sec) —
+  `lib/game/score.ts`. It's a rescaled *presentation* of
+  `remainingSeconds`, not a separate tracked value, so every
+  modifier (wrong-guess penalty, zoom-out penalty, correct-streak
+  bonus) that touches the clock automatically shows up here too.
+- Freezes naturally on solve (the clock stops ticking); force-zeroed
+  on failure/give-up — no reward for not solving.
+- Each discrete bonus/penalty event shows a transient "+20"/"−150"
+  popup next to the score (not fired for ordinary per-tick decay).
+- A confetti burst (`canvas-confetti`) fires once, exactly on a
+  genuine solve (not on give-up/timeout).
 
 **Streak & sharing**
 - Streak counter (consecutive days solved) is the daily-ritual hook.
@@ -117,26 +162,50 @@ This *is* the product; get it right before optimizing anything else.
 - Free, no monetization, for v1.
 - Everything above is free/open-source end to end; that constraint was
   deliberate, keep it that way unless a real limit is hit.
+- **`canvas-confetti`** for the one-shot solve celebration — the only
+  dependency added beyond the original stack list, kept because it's
+  free/open-source and a one-liner for what it does.
 
-## Architecture (planned — nothing scaffolded yet)
+## Architecture (implemented)
 - `src/components/CountryOutline` → SVG draw-on animation, one path per
   country, driven by Framer Motion `pathLength`. Used for both the
   target and the 3 neighbor slots.
-- `src/lib/geo/` → TopoJSON loading, country lookup, neighbor resolution
-  via restcountries `borders`, compass-direction slot assignment.
-- `src/lib/game/` → clock/penalty state machine, letter-guess (Hangman)
-  logic, `dailyCountry.ts` (deterministic hash of UTC date → today's
-  country + neighbor subset, no backend call).
-- `src/lib/streak/` → localStorage-backed streak read/write. Swap for a
-  Supabase-backed version later without changing the game-loop code
-  that calls it.
-- `src/lib/trivia/` → static per-country trivia fact data (LLM-
-  generated, human-reviewed).
+- `src/components/WorldMapLayer` → the zoom/pan world-map reveal layer
+  (radial spotlight fade-in centered on the target, keyed off zoom
+  progress).
+- `src/components/NeighborsLayer` → the 3 compass-positioned neighbor
+  outlines + redacted/revealing name labels.
+- `src/components/Keyboard` → on-screen Hangman input, source of truth
+  for per-letter guessed/correct/wrong state.
+- `src/components/DotMatrixNumber` → the countdown clock's digit
+  display.
+- `src/components/TriviaOverlay`, `src/components/ShareResult` → the
+  target's trivia fact and the post-round spoiler-safe share string.
+- `src/lib/geo/` → TopoJSON loading (`scene.ts`, `pathBounds.ts`),
+  neighbor compass-direction slot assignment (`labelLayout.ts`).
+- `src/lib/game/` → `clock.ts` (clock/penalty/bonus state machine),
+  `zoom.ts` (zoom-out penalty + pan-radius math), `score.ts` (live
+  score derived from the clock), `useGameRound.ts` (ties it all
+  together), `neighborReveal.ts` (randomized letter-reveal order),
+  `dailyCountry.ts` (deterministic hash of UTC date → today's country +
+  neighbor subset, no backend call).
+- `src/lib/streak/` → localStorage-backed streak read/write
+  (`useStreak.ts`). Swap for a Supabase-backed version later without
+  changing the game-loop code that calls it.
+- `src/lib/share/` → share-string generation (day number, outcome,
+  guess-pattern row).
+- Trivia fact data lives alongside the generated country dataset (see
+  `scripts/generate-countries-geo.mjs` / `merge-country-metadata.mjs`),
+  not a separate `src/lib/trivia/` module as originally planned.
 
 ## Commands
-None yet — no scaffold exists. Stack is decided (Vite + React +
-TypeScript); once scaffolded via `npm create vite@latest -- --template
-react-ts`, add the real `dev`/`build`/`lint` invocations here.
+- `npm run dev` — start the dev server.
+- `npm run typecheck` — `tsc --noEmit`.
+- `npm run test` — run the Vitest suite (`vitest run`).
+- `npm run build` — typecheck + production build.
+- `npm run lint` — ESLint.
+- `npm run gen:countries-geo` / `npm run gen:countries` — regenerate
+  the country/outline/trivia dataset from source data.
 
 ## Open design decisions — needs playtesting, not just spec
 - Exact time-penalty tiers by unique-letter count (illustrative only:
@@ -148,6 +217,14 @@ react-ts`, add the real `dev`/`build`/`lint` invocations here.
 - Exact guess-pattern visual format for the share string.
 - Trivia fact review process specifics (who reviews, what "verifiably
   true" bar is enforced).
+- Zoom-out penalty tuning (`ZOOM_STEP`, `ZOOM_PENALTY_SECONDS`,
+  `WORLD_REVEAL_SURCHARGE_SECONDS`) and the correct-streak bonus size
+  (`CORRECT_STREAK_BONUS_INTERVAL`/`_SECONDS`) — both currently
+  placeholder values, same "needs playtesting" status as the original
+  penalty tiers.
+- Streak-based score multiplier (tabled in `ideas.md`) — one facet
+  decided (keys off the solve-streak, not a login/open streak), tier
+  values still undecided, not yet implemented.
 
 ## Gotchas
 - Don't reach for Leaflet or MapLibre GL — both are built for
@@ -162,6 +239,11 @@ react-ts`, add the real `dev`/`build`/`lint` invocations here.
 - The vault doc's multiple-choice design and discrete 4-stage hint
   ladder are **superseded** by this file — don't reintroduce them
   without an explicit new decision.
+- `document.body.scrollWidth` is **not** a reliable mobile-overflow
+  check in this repo — `.app` is `position: fixed; inset: 0`, and
+  fixed subtrees don't propagate overflow into `body.scrollWidth`. Use
+  `getBoundingClientRect()` per-element or a screenshot instead (see
+  vault: `web/position-fixed-hides-overflow-from-body-scrollwidth.md`).
 
 <!-- wire-vault:start -->
 ## Knowledge vault — project layer
@@ -171,6 +253,6 @@ cross-project vault at `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/
 
 - **Read first:** before re-deriving an architecture decision or re-debugging
   a non-obvious issue, check `projects/geo/index.md` there.
-- **Write path:** durable insights go through `/curate-knowledge` (gated) —
+- **Write path:** durable insights go through `/curate-vault` (gated) —
   never write vault articles directly.
 <!-- wire-vault:end -->

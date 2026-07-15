@@ -22,3 +22,16 @@ puzzle. _Avoid_: puzzle config, level
 The target-anchored projection frame: viewBox, pxScale (on-screen px →
 viewBox units), neighbor slots, and the zoom ceiling. Owned by
 `computeGeoScene`. _Avoid_: map state, camera
+
+**RoundCore**:
+The round's entire rulebook as one pure state machine
+(`reduceRound(state, event)` in `lib/game/round.ts`): clock decay,
+penalties, bonuses, guessing, zoom economy, score events. The
+`useGameRound` hook is only an adapter feeding it TICK events.
+_Avoid_: game state, clock (the retired GameClock class)
+
+**Score event**:
+A discrete time-economy adjustment (streak bonus, wrong-guess penalty,
+zoom-out charge) logged in RoundCore state with a monotonic id — what
+the UI surfaces as the "+20"/"−150" popup. Never emitted for ordinary
+per-tick decay. _Avoid_: notification, toast

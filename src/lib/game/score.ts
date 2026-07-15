@@ -1,4 +1,4 @@
-import type { ClockStatus } from "./clock";
+import type { RoundStatus } from "./round";
 
 /**
  * A rescaled presentation of remainingSeconds, not a second bookkeeping
@@ -19,7 +19,7 @@ export const SCORE_SECONDS_MULTIPLIER = 10;
  * failed/given-up round is force-zeroed: no reward for not solving, same
  * spirit as the share string keeping the country hidden on failure.
  */
-export function computeScore(status: ClockStatus, remainingSeconds: number): number {
+export function computeScore(status: RoundStatus, remainingSeconds: number): number {
   if (status === "failed") return 0;
   return SCORE_BASE_POINTS + Math.round(remainingSeconds * SCORE_SECONDS_MULTIPLIER);
 }

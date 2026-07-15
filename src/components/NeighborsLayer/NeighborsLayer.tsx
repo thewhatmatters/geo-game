@@ -11,7 +11,6 @@ const REVEALED_COLOR = "#fff";
 
 export interface NeighborsLayerProps {
   slots: NeighborSlot[];
-  visible: boolean;
   completion: number;
   /** Stroke width and label font size in viewBox user-units (pre-scaled by the parent scene's pxScale so they read as a consistent on-screen size regardless of the target's true size). */
   strokeWidth: number;
@@ -29,10 +28,10 @@ export interface NeighborsLayerProps {
  * neighbors (including 0, for islands) simply renders fewer — no
  * placeholder or error.
  */
-export function NeighborsLayer({ slots, visible, completion, strokeWidth, labelFontSize, viewBox }: NeighborsLayerProps) {
+export function NeighborsLayer({ slots, completion, strokeWidth, labelFontSize, viewBox }: NeighborsLayerProps) {
   const reveals = useNeighborReveal(slots, completion);
 
-  if (!visible || slots.length === 0) return null;
+  if (slots.length === 0) return null;
 
   const frame = viewBoxToBounds(viewBox);
   const xMargin = labelFontSize;

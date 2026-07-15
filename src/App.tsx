@@ -333,7 +333,6 @@ function App({ boot }: { boot: RoundBoot }) {
               )}
               <NeighborsLayer
                 slots={scene.neighbors}
-                visible={round.neighborsVisible}
                 completion={round.neighborCompletion}
                 strokeWidth={NEIGHBOR_STROKE_PX * scene.pxScale}
                 labelFontSize={NEIGHBOR_LABEL_PX * scene.pxScale}
@@ -377,7 +376,7 @@ function App({ boot }: { boot: RoundBoot }) {
           {/* Sits above the blanks, off the map entirely — previously
               centered over the outline itself, where white text on the
               white outline lines was hard to read. */}
-          {round.showTrivia && <TriviaOverlay code={daily.targetCode} />}
+          <TriviaOverlay code={daily.targetCode} />
           <div className="display-name" data-testid="display-name">
             {splitIntoWordGroups(round.displayChars).map((word, wordIndex) => (
               <div className="display-name__group" key={wordIndex}>

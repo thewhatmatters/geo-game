@@ -8,31 +8,15 @@ import { WorldMapLayer } from "./components/WorldMapLayer";
 import { TriviaOverlay } from "./components/TriviaOverlay";
 import { ShareResult } from "./components/ShareResult";
 import { DotMatrixNumber } from "./components/DotMatrixNumber";
-import { getAllCountries, getDailyCountry } from "./lib/game/dailyCountry";
+import { getAllCountries } from "./lib/game/dailyCountry";
 import { useGameRound } from "./lib/game/useGameRound";
 import type { DisplayChar } from "./lib/game/useGameRound";
+import type { RoundBoot } from "./lib/game/boot";
 import { ZOOM_MIN, ZOOM_SENSITIVITY, ZOOM_STEP } from "./lib/game/zoom";
-import { computeGeoScene } from "./lib/geo/scene";
 import { viewBoxSize } from "./lib/geo/pathBounds";
 import { useStreak } from "./lib/streak/useStreak";
-import { generateShareString, getDayNumber } from "./lib/share";
+import { generateShareString } from "./lib/share";
 import { computeScore, SCORE_SECONDS_MULTIPLIER } from "./lib/game/score";
-
-const daily = getDailyCountry(new Date());
-// The scene's <svg> fills the viewport via preserveAspectRatio="xMidYMid
-// slice" (CSS background-size: cover behavior) — its true on-screen size is
-// the LARGER of viewport width/height, not a fixed box. computeGeoScene
-// needs that real size to convert "desired on-screen px" constants below
-// into correct viewBox user-units.
-const scene = computeGeoScene(daily, Math.max(window.innerWidth, window.innerHeight));
-const dayNumber = getDayNumber(new Date());
-
-// Center of the scene's viewBox — zooming out scales the map content around
-// this fixed point, so the target stays centered regardless of zoom level.
-const [ZOOM_ORIGIN_X, ZOOM_ORIGIN_Y] = (() => {
-  const [minX, minY, w, h] = scene.viewBox.split(" ").map(Number);
-  return [minX + w / 2, minY + h / 2];
-})();
 
 // Desired on-screen sizes (px) for the target outline stroke and neighbor
 // labels, converted to viewBox user-units via the scene's pxScale so they
@@ -66,12 +50,10 @@ const PAN_RADIUS_FACTOR = 0.5;
 /** How long the floating "+20"/"-150" score-delta popup stays on screen before fading out. */
 const SCORE_DELTA_DISPLAY_MS = 1200;
 
-// Static for the whole session — computed once rather than per-render.
+// Static for the whole session — pure data with no hidden inputs, so
+// module scope is honest here (unlike the boot-derived values, which come
+// in via the RoundBoot prop).
 const allCountries = getAllCountries();
-// The target + its neighbors still get the world layer's opaque land-mask
-// fill (see WorldMapLayer) — only their STROKE is suppressed there, since
-// their own dedicated layers draw it progressively.
-const worldLayerStrokeExclusions = new Set([daily.targetCode, ...daily.neighborCodes]);
 
 // Splits the target name's per-character reveal state at space boundaries
 // into per-word groups — each group renders as its own bordered box row
@@ -100,9 +82,27 @@ function clampPan(pan: { x: number; y: number }, radius: number): { x: number; y
   return { x: pan.x * scale, y: pan.y * scale };
 }
 
-function App() {
+function App({ boot }: { boot: RoundBoot }) {
+  const { daily, scene, dayNumber } = boot;
+
+  // Center of the scene's viewBox — zooming out scales the map content
+  // around this fixed point, so the target stays centered regardless of
+  // zoom level.
+  const [zoomOriginX, zoomOriginY] = useMemo(() => {
+    const [minX, minY, w, h] = scene.viewBox.split(" ").map(Number);
+    return [minX + w / 2, minY + h / 2];
+  }, [scene.viewBox]);
+
+  // The target + its neighbors still get the world layer's opaque land-mask
+  // fill (see WorldMapLayer) — only their STROKE is suppressed there, since
+  // their own dedicated layers draw it progressively.
+  const worldLayerStrokeExclusions = useMemo(
+    () => new Set([daily.targetCode, ...daily.neighborCodes]),
+    [daily],
+  );
+
   const round = useGameRound(daily.target, scene.maxZoom);
-  const { streak, recordOutcome } = useStreak();
+  const { streak, recordOutcome } = useStreak(boot.date);
   const recordedRef = useRef(false);
   const outlineRef = useRef<HTMLDivElement>(null);
   const topPanelRef = useRef<HTMLDivElement>(null);
@@ -252,7 +252,7 @@ function App() {
       guesses: round.guesses,
       targetName: daily.target.name,
     });
-  }, [round.status, round.remainingSeconds, round.guesses]);
+  }, [round.status, round.remainingSeconds, round.guesses, dayNumber, daily.target.name]);
 
   return (
     <>
@@ -293,14 +293,14 @@ function App() {
             transform={`translate(${pan.x} ${pan.y})`}
           >
             <g
-              transform={`translate(${ZOOM_ORIGIN_X} ${ZOOM_ORIGIN_Y}) scale(${1 / round.zoom}) translate(${-ZOOM_ORIGIN_X} ${-ZOOM_ORIGIN_Y})`}
+              transform={`translate(${zoomOriginX} ${zoomOriginY}) scale(${1 / round.zoom}) translate(${-zoomOriginX} ${-zoomOriginY})`}
             >
               <WorldMapLayer
                 countries={allCountries}
                 excludeStrokeCodes={worldLayerStrokeExclusions}
                 strokeWidth={WORLD_STROKE_PX * scene.pxScale}
-                centerX={ZOOM_ORIGIN_X}
-                centerY={ZOOM_ORIGIN_Y}
+                centerX={zoomOriginX}
+                centerY={zoomOriginY}
                 revealRadius={worldLayerRevealRadius}
                 peakOpacity={worldLayerPeakOpacity}
               />
@@ -318,8 +318,8 @@ function App() {
                   is needed. */}
               {round.status === "solved" && (
                 <text
-                  x={ZOOM_ORIGIN_X}
-                  y={ZOOM_ORIGIN_Y}
+                  x={zoomOriginX}
+                  y={zoomOriginY}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fontSize={NEIGHBOR_LABEL_PX * scene.pxScale}

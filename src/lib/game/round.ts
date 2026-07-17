@@ -208,14 +208,25 @@ export function displayChars(state: RoundState): DisplayChar[] {
     });
 }
 
-/** 0–100: the target outline finishes drawing at HINT_ONSET_FRACTION of the round — it's the primary hint. */
+/**
+ * 0–100: the target outline finishes drawing at HINT_ONSET_FRACTION of the
+ * round — it's the primary hint. Any terminal status (solved, timed out,
+ * give-up) completes it: on failure the name stays hidden, so the finished
+ * shape is the player's only geographic payoff for the round.
+ */
 export function outlineCompletion(state: RoundState): number {
+  if (state.status !== "running") return 100;
   const elapsed = state.initialSeconds - state.remainingSeconds;
   return Math.min(100, (elapsed / (state.initialSeconds * HINT_ONSET_FRACTION)) * 100);
 }
 
-/** 0–100: neighbor outlines draw from t=0 and finish exactly as the clock hits 0. */
+/**
+ * 0–100: neighbor outlines draw from t=0 and finish exactly as the clock
+ * hits 0. Like outlineCompletion, any terminal status completes them —
+ * post-round the full hint set is fair game.
+ */
 export function neighborCompletion(state: RoundState): number {
+  if (state.status !== "running") return 100;
   const elapsed = state.initialSeconds - state.remainingSeconds;
   return Math.min(100, (elapsed / state.initialSeconds) * 100);
 }

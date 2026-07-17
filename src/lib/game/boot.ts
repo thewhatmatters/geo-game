@@ -20,6 +20,8 @@ export interface RoundBoot {
   daily: DailySelection;
   scene: GeoScene;
   dayNumber: number;
+  /** The load-time viewport — App needs the real height for the vertical world-edge clamp (see scene.ts clampWorldCenterY). */
+  viewport: ViewportSize;
 }
 
 /**
@@ -36,6 +38,6 @@ export interface RoundBoot {
  */
 export function bootRound(date: Date, viewport: ViewportSize): RoundBoot {
   const daily = getDailyCountry(date);
-  const scene = computeGeoScene(daily, Math.max(viewport.width, viewport.height));
-  return { date, daily, scene, dayNumber: getDayNumber(date) };
+  const scene = computeGeoScene(daily, Math.max(viewport.width, viewport.height), viewport.height);
+  return { date, daily, scene, dayNumber: getDayNumber(date), viewport };
 }

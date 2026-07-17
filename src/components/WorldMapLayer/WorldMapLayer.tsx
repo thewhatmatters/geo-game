@@ -1,43 +1,77 @@
 import type { Country, CountryCode } from "../../lib/game/dailyCountry";
+import { WORLD_WIDTH, worldExtentY } from "../../lib/geo/scene";
 
 /** Fainter than NEIGHBOR_COLOR — this is tertiary background context, not something the player needs to read. Layered underneath the radial reveal mask in App.tsx (which multiplies this down further), so the base alpha needs headroom to still be legible during the gradual mid-zoom reveal, not just once fully zoomed out. */
 const WORLD_COLOR = "rgba(255, 255, 255, 0.4)";
-const OCEAN_LINE_COLOR = "rgba(255, 255, 255, 0.22)";
+/**
+ * Deliberately strong for a background texture: when the target sits in
+ * open ocean (no neighbor landmasses anywhere near), this hatch is the ONLY
+ * thing a paid zoom-out step reveals, so each step's opacity ramp
+ * (WORLD_REVEAL_OPACITY_ZOOM_SPAN in App.tsx) has to produce an obvious
+ * delta — at the old 0.22 a step barely registered. The radial reveal mask
+ * multiplies it down further mid-reveal.
+ */
+const OCEAN_LINE_COLOR = "rgba(255, 255, 255, 0.55)";
 /** Matches the page background (index.css `body { background: #000; }`) — masks the ocean hatch under actual landmasses. Without an opaque fill here, the ocean rect (which spans the whole world, not just literal water) would bleed through every country's interior, not just true gaps between them. */
 const LAND_MASK_COLOR = "#000";
 
 /**
- * World projection extent — matches WORLD_SIZE in
- * scripts/generate-countries-geo.mjs and d3's fitSize default clip extent
- * ([[0,0],[w,h]]), so every country's path (all projected by that one
- * shared call) falls within this rectangle.
+ * Seamless horizontal wrap: the whole world tile (hatch + graticule +
+ * countries) renders once as a <g id>, then twice more via <use> at
+ * ±WORLD_WIDTH. The projection's x axis is linear in longitude, so a
+ * one-world-width translate IS the antimeridian wrap — countries split at
+ * ±180° (Russia, Fiji) visually rejoin across the seam, and panning/zoom
+ * near the date line shows continuous ocean instead of a hard edge into
+ * void. Vertically there is no wrap (poles are real edges); the zoom
+ * ceiling (scene.ts height-fit maxZoom) + App's clampWorldCenterY keep the
+ * viewport inside the world's height instead.
  */
-const WORLD_WIDTH = 4000;
-const WORLD_HEIGHT = 2000;
-
+const WORLD_TILE_ID = "world-tile";
 /**
- * The reveal is a SQUARE (uniform scale in x and y — see App.tsx's zoom
- * transform), but the world itself is a 4000x2000 (2:1) equirectangular
- * rectangle. At full zoom-out the square necessarily grows to fully cover
- * the WIDTH (matching computeGeoScene's maxZoom, ~worldWidth * 1.15 =
- * 4600), which — being square — tries to show that same ~4600 units of
- * HEIGHT too, well past the poles where no ocean rect or country data
- * exists at all. Without this margin, that shows up as hard black bars
- * top/bottom on wide viewports (a "slice" crop shows more width, less
- * height, but the underlying overshoot is there regardless of aspect
- * ratio). Only the OCEAN TEXTURE needs extending past the real world
- * bounds — actual country paths correctly stop at real landmass edges.
+ * The hatch spans exactly one world tile horizontally (copies abut
+ * seamlessly; any margin would double-expose the pattern at seams) and the
+ * EFFECTIVE data extent vertically (see scene.ts worldExtentY) — hatch
+ * past Antarctica's real bottom edge reads as a dead padding band when
+ * fully zoomed out.
  */
-const HATCH_MARGIN = 1600;
-const HATCH_X = -HATCH_MARGIN;
-const HATCH_Y = -HATCH_MARGIN;
-const HATCH_WIDTH = WORLD_WIDTH + HATCH_MARGIN * 2;
-const HATCH_HEIGHT = WORLD_HEIGHT + HATCH_MARGIN * 2;
+const HATCH_X = 0;
+const HATCH_Y = worldExtentY().top;
+const HATCH_WIDTH = WORLD_WIDTH;
+const HATCH_HEIGHT = worldExtentY().height;
 
 const OCEAN_HATCH_ID = "ocean-hatch";
 /** Tile size (world units) and line thickness for the ocean hatch — smaller tile = tighter-packed diagonal lines. */
 const OCEAN_HATCH_TILE = 7;
 const OCEAN_HATCH_LINE_WIDTH = 1.25;
+
+/**
+ * Graticule (lat/long grid) — pure math lines carrying zero country
+ * information, revealed by the same radial mask as everything else. In
+ * empty-ocean scenes it gives each paid zoom step a second, structural
+ * "you bought map context" cue on top of the hatch: lines sweep into frame
+ * as the reveal widens. Spacing is in degrees of the equirectangular
+ * projection (world width 4000 = 360°). Drawn UNDER the land-mask paths so
+ * it reads as ocean texture, leaving landmass silhouettes clean.
+ */
+const GRATICULE_STEP_DEGREES = 10;
+const GRATICULE_COLOR = "rgba(255, 255, 255, 0.3)";
+/** On-screen px via vector-effect="non-scaling-stroke" — world-unit strokes either balloon at low zoom or vanish at full zoom-out, and a hairline at every zoom is the classic chart look. */
+const GRATICULE_LINE_WIDTH_PX = 1;
+
+const GRATICULE_STEP = (WORLD_WIDTH / 360) * GRATICULE_STEP_DEGREES;
+// No +1 on the meridians: the x=WORLD_WIDTH line is the NEXT tile's x=0 —
+// including both would double-draw (brighter) exactly at the wrap seam.
+const GRATICULE_XS = Array.from(
+  { length: Math.floor(360 / GRATICULE_STEP_DEGREES) },
+  (_, i) => i * GRATICULE_STEP,
+);
+// Parallels stay on the true 10°-grid positions but only those inside the
+// effective data extent are drawn — a grid line floating in the dead band
+// past Antarctica would reintroduce the padding the extent clamp removes.
+const GRATICULE_YS = Array.from(
+  { length: Math.floor(180 / GRATICULE_STEP_DEGREES) + 1 },
+  (_, i) => i * GRATICULE_STEP,
+).filter((y) => y >= worldExtentY().top && y <= worldExtentY().bottom);
 
 const REVEAL_GRADIENT_ID = "world-reveal-gradient";
 const REVEAL_MASK_ID = "world-reveal-mask";
@@ -101,21 +135,36 @@ export function WorldMapLayer({
           <stop offset="55%" stopColor="#fff" stopOpacity={peakOpacity * 0.6} />
           <stop offset="100%" stopColor="#fff" stopOpacity={0} />
         </radialGradient>
-        <mask id={REVEAL_MASK_ID} maskUnits="userSpaceOnUse" x={HATCH_X} y={HATCH_Y} width={HATCH_WIDTH} height={HATCH_HEIGHT}>
-          <rect x={HATCH_X} y={HATCH_Y} width={HATCH_WIDTH} height={HATCH_HEIGHT} fill={`url(#${REVEAL_GRADIENT_ID})`} />
+        {/* Mask extent spans all three tiles; the single radial gradient
+            (centered on the target) reaches whichever copy is on screen, so
+            the reveal behaves identically across the wrap seam. */}
+        <mask id={REVEAL_MASK_ID} maskUnits="userSpaceOnUse" x={-WORLD_WIDTH} y={HATCH_Y} width={WORLD_WIDTH * 3} height={HATCH_HEIGHT}>
+          <rect x={-WORLD_WIDTH} y={HATCH_Y} width={WORLD_WIDTH * 3} height={HATCH_HEIGHT} fill={`url(#${REVEAL_GRADIENT_ID})`} />
         </mask>
       </defs>
       <g data-testid="world-map-layer" mask={`url(#${REVEAL_MASK_ID})`}>
-        <rect x={HATCH_X} y={HATCH_Y} width={HATCH_WIDTH} height={HATCH_HEIGHT} fill={`url(#${OCEAN_HATCH_ID})`} />
-        {Object.entries(countries).map(([code, country]) => (
-          <path
-            key={code}
-            d={country.path}
-            fill={LAND_MASK_COLOR}
-            stroke={excludeStrokeCodes.has(code) ? "none" : WORLD_COLOR}
-            strokeWidth={strokeWidth}
-          />
-        ))}
+        <g id={WORLD_TILE_ID}>
+          <rect x={HATCH_X} y={HATCH_Y} width={HATCH_WIDTH} height={HATCH_HEIGHT} fill={`url(#${OCEAN_HATCH_ID})`} />
+          <g data-testid="world-graticule" stroke={GRATICULE_COLOR} strokeWidth={GRATICULE_LINE_WIDTH_PX}>
+            {GRATICULE_XS.map((x) => (
+              <line key={`v${x}`} x1={x} y1={HATCH_Y} x2={x} y2={HATCH_Y + HATCH_HEIGHT} vectorEffect="non-scaling-stroke" />
+            ))}
+            {GRATICULE_YS.map((y) => (
+              <line key={`h${y}`} x1={0} y1={y} x2={WORLD_WIDTH} y2={y} vectorEffect="non-scaling-stroke" />
+            ))}
+          </g>
+          {Object.entries(countries).map(([code, country]) => (
+            <path
+              key={code}
+              d={country.path}
+              fill={LAND_MASK_COLOR}
+              stroke={excludeStrokeCodes.has(code) ? "none" : WORLD_COLOR}
+              strokeWidth={strokeWidth}
+            />
+          ))}
+        </g>
+        <use href={`#${WORLD_TILE_ID}`} x={-WORLD_WIDTH} />
+        <use href={`#${WORLD_TILE_ID}`} x={WORLD_WIDTH} />
       </g>
     </>
   );

@@ -183,6 +183,35 @@ describe("selectors", () => {
     expect(neighborCompletion(end)).toBe(100);
   });
 
+  it("keeps the time-driven completions while running (no early snap)", () => {
+    const mid = run(createRound(CHAD, 3), tick(6)); // 10% elapsed
+    expect(mid.status).toBe("running");
+    expect(outlineCompletion(mid)).toBeCloseTo(100 / 4.5, 5); // 10% / 45%
+    expect(neighborCompletion(mid)).toBeCloseTo(10, 5);
+  });
+
+  it("completes both to 100 on solve, regardless of clock position", () => {
+    const solved = run(createRound(PERU, 3), tick(1), guess("P"), guess("E"), guess("R"), guess("U"));
+    expect(solved.status).toBe("solved");
+    expect(outlineCompletion(solved)).toBe(100);
+    expect(neighborCompletion(solved)).toBe(100);
+  });
+
+  it("completes both to 100 on give-up, regardless of clock position", () => {
+    const failed = run(createRound(CHAD, 3), tick(1), { type: "GIVE_UP" });
+    expect(failed.status).toBe("failed");
+    expect(failed.remainingSeconds).toBe(59); // clock nowhere near 0
+    expect(outlineCompletion(failed)).toBe(100);
+    expect(neighborCompletion(failed)).toBe(100);
+  });
+
+  it("completes both to 100 when a wrong-guess penalty drains the clock", () => {
+    const failed = run(createRound(CHAD, 3, 15), guess("Z")); // -20s tier kills a 15s clock
+    expect(failed.status).toBe("failed");
+    expect(outlineCompletion(failed)).toBe(100);
+    expect(neighborCompletion(failed)).toBe(100);
+  });
+
   it("non-letter characters are always revealed and not letters", () => {
     const state = createRound({ name: "Sri Lanka", unique_letters: 7 }, 3);
     const space = displayChars(state)[3];

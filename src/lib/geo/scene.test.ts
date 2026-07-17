@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import countriesData from "../../data/countries.json";
 import type { Country } from "../game/dailyCountry";
-import { computeGeoScene } from "./scene";
+import { computeGeoScene, clusterCenters, clampWorldCenterY, worldExtentY, LOCATOR_RING_MIN_BOOST, SMALL_TARGET_MAX_BOOST, WORLD_HEIGHT } from "./scene";
+import { pathBounds, viewBoxSize } from "./pathBounds";
 
 const countries = countriesData as Record<string, Country>;
 
@@ -118,6 +119,96 @@ describe("computeGeoScene", () => {
     expect(australia?.visibleBounds).toBeNull();
   });
 
+  describe("small-target readability boost (targetBoost)", () => {
+    /** Larger of the target's bounding-box dimensions, in world units — the size signal the boost keys off. */
+    function targetSpan(country: Country): number {
+      const b = pathBounds(country.path);
+      return Math.max(b.maxX - b.minX, b.maxY - b.minY);
+    }
+    /** ViewBox size as a multiple of the target's span — smaller means a tighter frame (bigger on-screen target). */
+    function frameRatio(country: Country): number {
+      const scene = computeGeoScene({ target: country, neighborCodes: [] });
+      return viewBoxSize(scene.viewBox) / targetSpan(country);
+    }
+
+    it("boosts a tiny scattered island group: targetBoost > 1 and a tighter frame than a large country's", () => {
+      // Wallis and Futuna — today's real-world regression case: two tiny
+      // islands whose combined bbox is mostly ocean.
+      const wlf = countries["WLF"];
+      const scene = computeGeoScene({ target: wlf, neighborCodes: [] });
+      expect(scene.targetBoost).toBeGreaterThan(1);
+      expect(frameRatio(wlf)).toBeLessThan(frameRatio(countries["DEU"]));
+      // Frame tightening tracks the boost exactly: margin is divided by it.
+      expect(frameRatio(wlf)).toBeCloseTo(1 + (frameRatio(countries["DEU"]) - 1) / scene.targetBoost, 6);
+    });
+
+    it("leaves large-country days untouched: boost is exactly 1 and the frame is the standard margin", () => {
+      for (const code of ["DEU", "BRA"]) {
+        const scene = computeGeoScene({ target: countries[code], neighborCodes: [] });
+        expect(scene.targetBoost).toBe(1);
+        // Standard frame: 1 + 2 * VIEWBOX_MARGIN_RATIO (2.5) times the span.
+        expect(frameRatio(countries[code])).toBeCloseTo(6, 6);
+      }
+    });
+
+    it("caps the boost for micro-states so the frame/stroke never gets absurd", () => {
+      // Vatican City: ~0.1 world units across — an uncapped span-inverse
+      // boost would be in the hundreds.
+      const scene = computeGeoScene({ target: countries["VAT"], neighborCodes: [] });
+      expect(scene.targetBoost).toBe(SMALL_TARGET_MAX_BOOST);
+    });
+  });
+
+  describe("locator rings (locatorCenters)", () => {
+    it("marks each far-apart landmass of a boosted scattered-island target", () => {
+      // Wallis and Futuna: two islands ~24 world units apart — each earns
+      // its own ring, and each center falls inside its island's own bbox.
+      const wlf = countries["WLF"];
+      const scene = computeGeoScene({ target: wlf, neighborCodes: [] });
+      expect(scene.targetBoost).toBeGreaterThanOrEqual(LOCATOR_RING_MIN_BOOST);
+      expect(scene.locatorCenters).toHaveLength(2);
+
+      const targetBounds = pathBounds(wlf.path);
+      for (const center of scene.locatorCenters) {
+        expect(center.x).toBeGreaterThanOrEqual(targetBounds.minX);
+        expect(center.x).toBeLessThanOrEqual(targetBounds.maxX);
+        expect(center.y).toBeGreaterThanOrEqual(targetBounds.minY);
+        expect(center.y).toBeLessThanOrEqual(targetBounds.maxY);
+      }
+    });
+
+    it("emits no rings at all on non-boosted days (large countries)", () => {
+      for (const code of ["DEU", "BRA"]) {
+        const scene = computeGeoScene({ target: countries[code], neighborCodes: [] });
+        expect(scene.targetBoost).toBeLessThan(LOCATOR_RING_MIN_BOOST);
+        expect(scene.locatorCenters).toEqual([]);
+      }
+    });
+  });
+
+  describe("clusterCenters", () => {
+    const near = { minX: 0, minY: 0, maxX: 10, maxY: 10 };
+    const adjacent = { minX: 12, minY: 0, maxX: 22, maxY: 10 };
+    const far = { minX: 200, minY: 200, maxX: 210, maxY: 210 };
+
+    it("merges bounds whose centers are within mergeDistance into one union-bbox center", () => {
+      // near (center 5,5) and adjacent (center 17,5) are 12 apart — merged
+      // under a distance of 20 into the union bbox (0..22)'s center.
+      expect(clusterCenters([near, adjacent], 20)).toEqual([{ x: 11, y: 5 }]);
+    });
+
+    it("keeps far-apart bounds as separate centers", () => {
+      expect(clusterCenters([near, far], 20)).toEqual([
+        { x: 5, y: 5 },
+        { x: 205, y: 205 },
+      ]);
+    });
+
+    it("returns an empty list for no bounds", () => {
+      expect(clusterCenters([], 20)).toEqual([]);
+    });
+  });
+
   describe("maxZoom", () => {
     it("returns a zoom multiplier greater than 1 (some zoom-out range always available)", () => {
       const target = findTargetWithNeighbors();
@@ -133,5 +224,33 @@ describe("computeGeoScene", () => {
       const huge = computeGeoScene({ target: countries["RUS"], neighborCodes: [] });
       expect(small.maxZoom).toBeGreaterThan(huge.maxZoom);
     });
+  });
+});
+
+describe("world-edge behavior (wrap + vertical lock)", () => {
+  it("clampWorldCenterY keeps the visible window inside the world's EFFECTIVE height", () => {
+    const extent = worldExtentY();
+    // The data extent is inset from the projection extent on both sides
+    // (Natural Earth stops at the ice edges, not the theoretical poles).
+    expect(extent.top).toBeGreaterThan(0);
+    expect(extent.bottom).toBeLessThan(WORLD_HEIGHT);
+    // Window smaller than the world: center clamps to [top+half, bottom-half].
+    expect(clampWorldCenterY(extent.top - 200, 800)).toBe(extent.top + 400); // near top -> pushed down
+    expect(clampWorldCenterY(extent.bottom + 200, 800)).toBe(extent.bottom - 400); // near bottom -> pushed up
+    expect(clampWorldCenterY(1000, 800)).toBe(1000); // mid-world -> untouched
+    // Window equal to (or beyond) the full effective height: only valid center is the middle.
+    const middle = extent.top + extent.height / 2;
+    expect(clampWorldCenterY(1700, extent.height)).toBe(middle);
+    expect(clampWorldCenterY(300, extent.height + 500)).toBe(middle);
+  });
+
+  it("maxZoom is height-fit: at maxZoom the viewport's world-window equals the world height", () => {
+    const target = findTargetWithNeighbors();
+    const daily = { target, neighborCodes: target.neighbor_codes.slice(0, 3) };
+    const renderPx = 1280;
+    const viewportHeightPx = 800;
+    const scene = computeGeoScene(daily, renderPx, viewportHeightPx);
+    const visibleAtMax = viewportHeightPx * scene.pxScale * scene.maxZoom;
+    expect(visibleAtMax).toBeCloseTo(worldExtentY().height, 5);
   });
 });

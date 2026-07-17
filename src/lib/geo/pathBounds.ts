@@ -30,6 +30,20 @@ export function pathBounds(path: string): Bounds {
   return { minX, minY, maxX, maxY };
 }
 
+/**
+ * Bounding box of each M...Z subpath — one closed ring per landmass for the
+ * d3-geo-generated paths described in pathBounds' note. Splitting on "M" is
+ * safe for that format (the only other tokens are numbers, commas, L and Z),
+ * and lets callers locate the individual islands of a scattered
+ * multi-landmass country whose combined bounds are mostly empty ocean.
+ */
+export function subpathBounds(path: string): Bounds[] {
+  return path
+    .split("M")
+    .filter((segment) => segment.trim().length > 0)
+    .map((segment) => pathBounds(segment));
+}
+
 /** Square SVG viewBox string centered on `bounds`, padded by `marginRatio` on each side relative to the larger dimension. */
 export function boundsToViewBox(bounds: Bounds, marginRatio: number): string {
   const width = bounds.maxX - bounds.minX;

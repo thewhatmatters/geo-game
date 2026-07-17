@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pathBounds, boundsToViewBox, viewBoxSize } from "./pathBounds";
+import { pathBounds, subpathBounds, boundsToViewBox, viewBoxSize } from "./pathBounds";
 
 describe("pathBounds", () => {
   it("computes the bounding box of a simple M/L/Z path", () => {
@@ -13,6 +13,28 @@ describe("pathBounds", () => {
 
   it("handles negative coordinates", () => {
     expect(pathBounds("M-5.5,-10L5,10Z")).toEqual({ minX: -5.5, minY: -10, maxX: 5, maxY: 10 });
+  });
+});
+
+describe("subpathBounds", () => {
+  it("returns one bounds per M...Z subpath, in order", () => {
+    const path = "M0,0L10,0L10,10ZM100,100L120,100L120,120Z";
+    expect(subpathBounds(path)).toEqual([
+      { minX: 0, minY: 0, maxX: 10, maxY: 10 },
+      { minX: 100, minY: 100, maxX: 120, maxY: 120 },
+    ]);
+  });
+
+  it("returns a single bounds for a single-ring path, matching pathBounds", () => {
+    const path = "M10,20L30,20L30,50L10,50Z";
+    expect(subpathBounds(path)).toEqual([pathBounds(path)]);
+  });
+
+  it("handles negative coordinates within subpaths", () => {
+    expect(subpathBounds("M-5.5,-10L5,10ZM20,20L25,25Z")).toEqual([
+      { minX: -5.5, minY: -10, maxX: 5, maxY: 10 },
+      { minX: 20, minY: 20, maxX: 25, maxY: 25 },
+    ]);
   });
 });
 

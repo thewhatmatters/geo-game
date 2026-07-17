@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Keyboard } from "./components/Keyboard";
 import { CountryPath } from "./components/CountryOutline";
@@ -12,7 +13,8 @@ import { getAllCountries } from "./lib/game/dailyCountry";
 import { useGameRound } from "./lib/game/useGameRound";
 import type { DisplayChar } from "./lib/game/useGameRound";
 import type { RoundBoot } from "./lib/game/boot";
-import { ZOOM_MIN, ZOOM_SENSITIVITY, ZOOM_STEP } from "./lib/game/zoom";
+import { ZOOM_MIN, ZOOM_SENSITIVITY, ZOOM_STEP, zoomStepsCrossed } from "./lib/game/zoom";
+import { clampWorldCenterY, worldExtentY } from "./lib/geo/scene";
 import { viewBoxSize } from "./lib/geo/pathBounds";
 import { useStreak } from "./lib/streak/useStreak";
 import { generateShareString } from "./lib/share";
@@ -23,6 +25,23 @@ import { computeScore, SCORE_SECONDS_MULTIPLIER } from "./lib/game/score";
 // read as a consistent size regardless of how large the target's true
 // geographic bounding box is.
 const TARGET_STROKE_PX = 1.75;
+// Tiny/scattered targets (scene.targetBoost > 1 — see SMALL_TARGET_SPAN in
+// lib/geo/scene.ts) get their stroke thickened by the boost, capped at this
+// on-screen ceiling, plus a soft white halo (the #target-halo filter below)
+// so the outline reads against the black background even at squiggle scale.
+// Both are no-ops for normal-size targets (boost === 1, no filter applied).
+const SMALL_TARGET_STROKE_MAX_PX = 5;
+const SMALL_TARGET_HALO_BLUR_PX = 3;
+// Locator rings for scattered-micro-landmass days (scene.locatorCenters —
+// see LOCATOR_RING_MIN_BOOST in lib/geo/scene.ts): a thin, low-opacity
+// double ring centered on each landmass, drawn under the target outline.
+// "Look here" markers for islands that are unavoidably fleck-sized even
+// after the boost; absent entirely on normal days.
+const LOCATOR_RING_RADIUS_PX = 28;
+const LOCATOR_RING_OUTER_RADIUS_PX = 36;
+const LOCATOR_RING_STROKE_PX = 1;
+const LOCATOR_RING_COLOR = "rgba(255, 255, 255, 0.4)";
+const LOCATOR_RING_OUTER_COLOR = "rgba(255, 255, 255, 0.15)";
 const NEIGHBOR_STROKE_PX = 1;
 // Shared by the target's own solved-state label AND the neighbor labels —
 // they read as the same visual "tier" of hint text, so they render at the
@@ -32,9 +51,44 @@ const WORLD_STROKE_PX = 0.75;
 
 /** Subtle grayish fill the target's shape gets once its own outline finishes drawing (outlineCompletion reaches 100) — a low-opacity white reads as gray against the black background. */
 const TARGET_FILL_COLOR = "rgba(255, 255, 255, 0.12)";
+/** Pre-completion fill: fully transparent rather than "none", because CSS can't interpolate fill from "none" — the fill would pop in instead of fading (see CountryPath's fill transition). */
+const TARGET_FILL_HIDDEN = "rgba(255, 255, 255, 0)";
 
 /** One button click = one full ZOOM_STEP of zoom change — the same size step a scroll/pinch gesture crosses, so a button click costs exactly the same one-time penalty as scrolling that far (see lib/game/zoom.ts). */
 const BUTTON_ZOOM_DELTA = ZOOM_STEP / ZOOM_SENSITIVITY;
+
+/**
+ * ABSOLUTE zoom-out units (zoom - ZOOM_MIN) over which the world layer's
+ * reveal opacity ramps from 0 to full. Deliberately NOT a fraction of the
+ * scene's full zoom range: maxZoom is derived from the target's viewBox
+ * size, so on tiny-target days it's enormous (hundreds), and a
+ * fraction-of-range opacity collapses to ~0 for the first several paid
+ * zoom steps — the player pays -5s per step and sees nothing change. Keyed
+ * to absolute units, every step produces a visible brightness delta on
+ * every day-size. Tuned so the first two paid button steps are each
+ * unmistakable at a glance: step 1 (zoom 1.5) lands at 0.5/1.1 ≈ 0.45
+ * revealed, step 2 (zoom 2.0) at 1.0/1.1 ≈ 0.91, and step 3+ is fully
+ * saturated. The reveal RADIUS still scales with the full range (see
+ * zoomProgress below), preserving the radial near-target-first character.
+ */
+const WORLD_REVEAL_OPACITY_ZOOM_SPAN = 1.1;
+
+/**
+ * One-shot "reveal pulse" — an expanding, fading white ring detonating
+ * from the map center each time the player's max zoom-out crosses a NEW
+ * ZOOM_STEP boundary (the exact same crossing the -5s penalty and its -50
+ * score popup fire on — see zoomStepsCrossed and the paidZoomSteps effect
+ * below), so the purchase visibly lands on the map itself, synchronized
+ * with the popup. Rendered outside the pan/zoom transforms so its size is
+ * pure screen-space px regardless of zoom level.
+ */
+const ZOOM_PULSE_DURATION_MS = 700;
+const ZOOM_PULSE_START_RADIUS_PX = 40;
+const ZOOM_PULSE_END_RADIUS_PX = 440;
+const ZOOM_PULSE_STROKE_START_PX = 3;
+const ZOOM_PULSE_STROKE_END_PX = 1;
+/** Ring opacity at detonation, fading to 0 — white/gray only, per the dark theme. */
+const ZOOM_PULSE_PEAK_OPACITY = 0.7;
 
 /**
  * How far the player can drag-pan the view, expressed as a multiple of the
@@ -74,12 +128,29 @@ function splitIntoWordGroups(chars: DisplayChar[]): DisplayChar[][] {
   return words;
 }
 
-/** Scales a pan vector down to `radius` if it exceeds it, leaving it untouched otherwise. */
-function clampPan(pan: { x: number; y: number }, radius: number): { x: number; y: number } {
-  const magnitude = Math.hypot(pan.x, pan.y);
-  if (magnitude <= radius || magnitude === 0) return radius <= 0 ? { x: 0, y: 0 } : pan;
-  const scale = radius / magnitude;
-  return { x: pan.x * scale, y: pan.y * scale };
+/**
+ * Bounds a pan vector two ways: overall magnitude to `radius` (the paid
+ * zoom-out budget), then the y component into [yMin, yMax] — the range
+ * within which the visible world-window stays inside the world's effective
+ * vertical extent. Horizontal stays free within the radius (the world
+ * wraps seamlessly there); vertical hard-stops at the poles, collapsing to
+ * zero at full zoom-out where the window already spans the whole height.
+ */
+function clampPan(
+  pan: { x: number; y: number },
+  radius: number,
+  yMin: number,
+  yMax: number,
+): { x: number; y: number } {
+  let { x, y } = pan;
+  const magnitude = Math.hypot(x, y);
+  if (radius <= 0) return { x: 0, y: 0 };
+  if (magnitude > radius) {
+    const scale = radius / magnitude;
+    x *= scale;
+    y *= scale;
+  }
+  return { x, y: Math.min(yMax, Math.max(yMin, y)) };
 }
 
 function App({ boot }: { boot: RoundBoot }) {
@@ -117,6 +188,39 @@ function App({ boot }: { boot: RoundBoot }) {
   const dragStateRef = useRef<{ startClientX: number; startClientY: number; startPan: { x: number; y: number } } | null>(null);
   const maxPanRadius = viewBoxSize(scene.viewBox) * (round.zoom - ZOOM_MIN) * PAN_RADIUS_FACTOR;
 
+  // Vertical world-edge clamp: the zoom pivots on the target, so a far-north/
+  // south target (Falklands, Iceland) would drag polar void into frame as the
+  // viewport's world-window approaches the world's height. Shift the content
+  // (in world units, inside the zoom transform) so the visible vertical
+  // window stays inside the world; zero until the window nears an edge, so
+  // default framing is untouched. Pairs with scene.ts's height-fit maxZoom
+  // (window never EXCEEDS the world's height) and WorldMapLayer's horizontal
+  // wrap (width overflow is seamless instead of clamped).
+  //
+  // The panel-centering offset participates too: it used to be a CSS
+  // translateY on the whole <svg>, which moved the svg's edges with it and
+  // re-exposed void past the clamped world edge. It's now an svg-internal
+  // pan-level shift (screen-space px → viewBox units via pxScale), so the
+  // svg always covers the full viewport and the clamp accounts for the
+  // world-center the offset actually puts on screen (a pan-level shift of
+  // dy moves the visible world center by -dy·zoom in world units). When the
+  // window hits a world edge, edge-pinning wins over gap-centering.
+  const panelOffsetUnits = verticalOffsetPx * scene.pxScale;
+  const visibleWorldHeight = boot.viewport.height * scene.pxScale * round.zoom;
+  const desiredWorldCenterY = zoomOriginY - panelOffsetUnits * round.zoom;
+  const clampedWorldCenterY = clampWorldCenterY(desiredWorldCenterY, visibleWorldHeight);
+  const worldShiftY = desiredWorldCenterY - clampedWorldCenterY;
+
+  // Vertical pan budget: a pan of dy moves the visible world-center by
+  // -dy·zoom, so these are the dy bounds that keep the window inside the
+  // world's effective extent (same range the resting clamp above enforces).
+  // At full zoom-out the window spans the whole height and both collapse
+  // to 0 — vertical drag locks while horizontal drag (which wraps) stays
+  // free. min/max guards absorb float error at exactly the ceiling.
+  const halfWindow = visibleWorldHeight / 2;
+  const panYMin = Math.min(0, (clampedWorldCenterY - (worldExtentY().bottom - halfWindow)) / round.zoom);
+  const panYMax = Math.max(0, (clampedWorldCenterY - (worldExtentY().top + halfWindow)) / round.zoom);
+
   useEffect(() => {
     if (round.status === "running" || recordedRef.current) return;
     recordedRef.current = true;
@@ -147,12 +251,28 @@ function App({ boot }: { boot: RoundBoot }) {
     return () => clearTimeout(timer);
   }, [round.scoreEvent]);
 
-  // Re-clamps whenever the zoom level shrinks the allowed pan radius (e.g.
-  // the player zooms back in after panning out) so a subsequent drag starts
-  // from a valid position rather than jumping back into bounds all at once.
+  // Reveal-pulse trigger: pure UI-layer detection of maxZoomReached
+  // crossing a new ZOOM_STEP boundary — the same arithmetic the reducer's
+  // zoom economy charges on (zoomStepsCrossed), so the ring fires exactly
+  // when the -5s/-50 popup does, and re-zooming over already-paid
+  // territory re-fires nothing. Keyed on the step count so consecutive
+  // steps restart the animation via remount.
+  const paidZoomSteps = zoomStepsCrossed(round.maxZoomReached);
+  const [zoomPulseStep, setZoomPulseStep] = useState(0);
+  const prevPaidStepsRef = useRef(paidZoomSteps);
   useEffect(() => {
-    setPan((prev) => clampPan(prev, maxPanRadius));
-  }, [maxPanRadius]);
+    if (paidZoomSteps > prevPaidStepsRef.current) {
+      prevPaidStepsRef.current = paidZoomSteps;
+      setZoomPulseStep(paidZoomSteps);
+    }
+  }, [paidZoomSteps]);
+
+  // Re-clamps whenever the zoom level shrinks the allowed pan budget (radius
+  // or vertical range) so a subsequent drag starts from a valid position
+  // rather than jumping back into bounds all at once.
+  useEffect(() => {
+    setPan((prev) => clampPan(prev, maxPanRadius, panYMin, panYMax));
+  }, [maxPanRadius, panYMin, panYMax]);
 
   useEffect(() => {
     const el = outlineRef.current;
@@ -184,7 +304,7 @@ function App({ boot }: { boot: RoundBoot }) {
     const dx = (e.clientX - drag.startClientX) * scene.pxScale;
     const dy = (e.clientY - drag.startClientY) * scene.pxScale;
     const next = { x: drag.startPan.x + dx, y: drag.startPan.y + dy };
-    setPan(clampPan(next, maxPanRadius));
+    setPan(clampPan(next, maxPanRadius, panYMin, panYMax));
   }
 
   function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
@@ -218,15 +338,14 @@ function App({ boot }: { boot: RoundBoot }) {
     return () => window.removeEventListener("resize", recomputeOffset);
   }, [round.status]);
 
-  // Progress from 0 (default zoom) to 1 (zoomMax — fully zoomed out). A
-  // mild ease-in (^1.15, not the much steeper ^2.5 tried earlier) so the
-  // reveal is genuinely gradual and visible throughout the zoom range —
-  // ^2.5 combined with the mask multiplying an already-faint base stroke
-  // alpha made everything stay imperceptible until nearly fully zoomed
-  // out, which read as "nothing happens" rather than a gradual reveal.
-  // Drives a RADIAL reveal (not a flat fade) centered on the target —
-  // countries near the target fade in first/strongest, with the spotlight
-  // widening as the player zooms out.
+  // Progress from 0 (default zoom) to 1 (zoomMax — fully zoomed out).
+  // Drives the reveal RADIUS only — the reveal OPACITY is keyed to
+  // absolute zoom-out units instead (see WORLD_REVEAL_OPACITY_ZOOM_SPAN),
+  // clamped to the scene's own range so large-target days (maxZoom near
+  // ZOOM_MIN — the range can be SHORTER than the fixed span) still reach
+  // full opacity at their max. The reveal stays RADIAL (not a flat fade),
+  // centered on the target — countries near the target fade in
+  // first/strongest, with the spotlight widening as the player zooms out.
   //
   // revealRadius is in the SAME pre-ambient-transform (world) coordinate
   // space as the country paths, which is itself wrapped in the ambient
@@ -240,8 +359,10 @@ function App({ boot }: { boot: RoundBoot }) {
   // by the time zoomProgress reaches 1 (guaranteeing full, un-vignetted
   // coverage once fully zoomed out, not just a soft fade at the corners).
   const zoomProgress = Math.min(1, Math.max(0, (round.zoom - ZOOM_MIN) / (scene.maxZoom - ZOOM_MIN)));
-  const worldLayerPeakOpacity = zoomProgress ** 1.15;
+  const opacityZoomSpan = Math.min(WORLD_REVEAL_OPACITY_ZOOM_SPAN, scene.maxZoom - ZOOM_MIN);
+  const worldLayerPeakOpacity = Math.min(1, Math.max(0, (round.zoom - ZOOM_MIN) / opacityZoomSpan));
   const worldLayerRevealRadius = viewBoxSize(scene.viewBox) * round.zoom * (0.5 + zoomProgress);
+
 
   const shareString = useMemo(() => {
     if (round.status === "running") return null;
@@ -265,7 +386,6 @@ function App({ boot }: { boot: RoundBoot }) {
       <div
         className={`outline-demo${isDragging ? " outline-demo--dragging" : ""}`}
         ref={outlineRef}
-        style={{ transform: `translateY(${verticalOffsetPx}px)` }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -290,11 +410,15 @@ function App({ boot }: { boot: RoundBoot }) {
               paid for. */}
           <g
             className={isDragging ? undefined : "pan-snap"}
-            transform={`translate(${pan.x} ${pan.y})`}
+            transform={`translate(${pan.x} ${pan.y + panelOffsetUnits})`}
           >
             <g
               transform={`translate(${zoomOriginX} ${zoomOriginY}) scale(${1 / round.zoom}) translate(${-zoomOriginX} ${-zoomOriginY})`}
             >
+              {/* World-space vertical clamp shift (see worldShiftY above):
+                  everything — map, target, labels — slides together so the
+                  viewport never crosses the world's top/bottom edge. */}
+              <g transform={`translate(0 ${worldShiftY})`}>
               <WorldMapLayer
                 countries={allCountries}
                 excludeStrokeCodes={worldLayerStrokeExclusions}
@@ -304,12 +428,55 @@ function App({ boot }: { boot: RoundBoot }) {
                 revealRadius={worldLayerRevealRadius}
                 peakOpacity={worldLayerPeakOpacity}
               />
-              <CountryPath
-                path={daily.target.path}
-                completion={round.outlineCompletion}
-                strokeWidth={TARGET_STROKE_PX * scene.pxScale}
-                fillColor={round.outlineCompletion >= 100 ? TARGET_FILL_COLOR : "none"}
-              />
+              {scene.targetBoost > 1 && (
+                <defs>
+                  {/* Generous filter region: the default (-10%..110% of the
+                      path's own bbox) clips the blur on thin scattered
+                      island paths whose bbox is mostly empty. */}
+                  <filter id="target-halo" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur
+                      in="SourceGraphic"
+                      stdDeviation={SMALL_TARGET_HALO_BLUR_PX * scene.pxScale}
+                      result="halo"
+                    />
+                    <feMerge>
+                      <feMergeNode in="halo" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+              )}
+              {scene.locatorCenters.map((center, i) => (
+                <g key={i}>
+                  <circle
+                    cx={center.x}
+                    cy={center.y}
+                    r={LOCATOR_RING_OUTER_RADIUS_PX * scene.pxScale}
+                    fill="none"
+                    stroke={LOCATOR_RING_OUTER_COLOR}
+                    strokeWidth={LOCATOR_RING_STROKE_PX * scene.pxScale}
+                  />
+                  <circle
+                    cx={center.x}
+                    cy={center.y}
+                    r={LOCATOR_RING_RADIUS_PX * scene.pxScale}
+                    fill="none"
+                    stroke={LOCATOR_RING_COLOR}
+                    strokeWidth={LOCATOR_RING_STROKE_PX * scene.pxScale}
+                  />
+                </g>
+              ))}
+              <g filter={scene.targetBoost > 1 ? "url(#target-halo)" : undefined}>
+                <CountryPath
+                  path={daily.target.path}
+                  completion={round.outlineCompletion}
+                  strokeWidth={
+                    Math.min(TARGET_STROKE_PX * scene.targetBoost, SMALL_TARGET_STROKE_MAX_PX) *
+                    scene.pxScale
+                  }
+                  fillColor={round.outlineCompletion >= 100 ? TARGET_FILL_COLOR : TARGET_FILL_HIDDEN}
+                />
+              </g>
               {/* Only on a genuine solve — a failed round keeps the country
                   hidden, same spoiler-safe rule the share string already
                   follows (see lib/share). Centered on the viewBox origin,
@@ -338,8 +505,37 @@ function App({ boot }: { boot: RoundBoot }) {
                 labelFontSize={NEIGHBOR_LABEL_PX * scene.pxScale}
                 viewBox={scene.viewBox}
               />
+              </g>
             </g>
           </g>
+          {/* Reveal pulse — see ZOOM_PULSE_* constants. Outside both the
+              pan and zoom <g>s, so the ring expands in constant screen-space
+              px from the viewport center (the zoom pivot) no matter how far
+              out the player is. Remounts per step via the key, restarting
+              the animation; unmounts when done to keep the DOM clean. */}
+          {zoomPulseStep > 0 && (
+            <motion.circle
+              key={zoomPulseStep}
+              data-testid="zoom-pulse"
+              cx={zoomOriginX}
+              cy={zoomOriginY}
+              fill="none"
+              stroke="#fff"
+              style={{ pointerEvents: "none" }}
+              initial={{
+                r: ZOOM_PULSE_START_RADIUS_PX * scene.pxScale,
+                strokeWidth: ZOOM_PULSE_STROKE_START_PX * scene.pxScale,
+                opacity: ZOOM_PULSE_PEAK_OPACITY,
+              }}
+              animate={{
+                r: ZOOM_PULSE_END_RADIUS_PX * scene.pxScale,
+                strokeWidth: ZOOM_PULSE_STROKE_END_PX * scene.pxScale,
+                opacity: 0,
+              }}
+              transition={{ duration: ZOOM_PULSE_DURATION_MS / 1000, ease: "easeOut" }}
+              onAnimationComplete={() => setZoomPulseStep(0)}
+            />
+          )}
         </svg>
       </div>
       <div className="app">

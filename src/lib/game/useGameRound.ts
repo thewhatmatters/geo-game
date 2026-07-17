@@ -27,6 +27,8 @@ export interface GameRound {
   neighborCompletion: number;
   /** Current map zoom level (1 = default framing, up to the scene's zoomMax = the whole world visible). */
   zoom: number;
+  /** Furthest zoom-out reached this round — only NEW territory beyond this charges a penalty (see lib/game/zoom.ts). Surfaced so the UI can react to paid step-crossings (App's reveal pulse) without re-deriving the economy. */
+  maxZoomReached: number;
   /** Feed raw wheel/pinch deltaY here — clamps zoom and applies the zoom-out time penalty internally. */
   handleZoomWheel: (deltaY: number) => void;
   guessLetter: (letter: string) => void;
@@ -71,6 +73,7 @@ export function useGameRound(target: Country, zoomMax: number): GameRound {
     outlineCompletion: outlineCompletion(state),
     neighborCompletion: neighborCompletion(state),
     zoom: state.zoom,
+    maxZoomReached: state.maxZoomReached,
     handleZoomWheel,
     guessLetter,
     giveUp,

@@ -20,7 +20,13 @@ export interface ZoomUpdate {
   penaltySeconds: number;
 }
 
-function stepsCrossed(zoomLevel: number): number {
+/**
+ * How many whole ZOOM_STEP boundaries a zoom level has crossed beyond
+ * ZOOM_MIN. Exported so the UI layer can detect the exact same
+ * step-crossings the penalty charges for (e.g. App's reveal pulse fires
+ * once per newly-crossed step) without duplicating this arithmetic.
+ */
+export function zoomStepsCrossed(zoomLevel: number): number {
   return Math.floor((zoomLevel - ZOOM_MIN) / ZOOM_STEP);
 }
 
@@ -39,7 +45,7 @@ function stepsCrossed(zoomLevel: number): number {
 export function applyZoomDelta(current: number, deltaY: number, maxZoomReached: number, zoomMax: number): ZoomUpdate {
   const next = Math.min(zoomMax, Math.max(ZOOM_MIN, current + deltaY * ZOOM_SENSITIVITY));
   const newMax = Math.max(maxZoomReached, next);
-  const newSteps = Math.max(0, stepsCrossed(newMax) - stepsCrossed(maxZoomReached));
+  const newSteps = Math.max(0, zoomStepsCrossed(newMax) - zoomStepsCrossed(maxZoomReached));
   let penaltySeconds = newSteps * ZOOM_PENALTY_SECONDS;
 
   const reachedWorldBefore = maxZoomReached >= zoomMax;

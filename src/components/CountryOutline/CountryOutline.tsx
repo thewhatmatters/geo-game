@@ -1,5 +1,19 @@
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { pathBounds, boundsToViewBox } from "../../lib/geo/pathBounds";
+
+/** Smooths the ~200ms clock-tick increments of the normal draw-in. */
+const DRAW_TRANSITION_SECONDS = 0.3;
+/**
+ * Completion jumps at least this many points in one update are discrete
+ * events, not clock flow — terminal-state closure (round.ts's completion
+ * selectors return 100 the moment the round ends) or a big time penalty
+ * advancing the time-derived completion all at once. Give those a longer
+ * eased sweep so they read as a reveal, not a snap. Ordinary tick
+ * increments are ~1-2 points, so they never cross this.
+ */
+const CLOSURE_JUMP_THRESHOLD = 15;
+const CLOSURE_TRANSITION_SECONDS = 1.4;
 
 export interface CountryPathProps {
   /** SVG path string in the shared world-projected frame produced by scripts/generate-countries-geo.mjs. */
@@ -22,6 +36,13 @@ export function CountryPath({
 }: CountryPathProps) {
   const pathLength = Math.min(100, Math.max(0, completion)) / 100;
 
+  // Previous completion (0-1), tracked to detect the terminal-closure jump.
+  const prevPathLengthRef = useRef(pathLength);
+  const isClosureJump = (pathLength - prevPathLengthRef.current) * 100 >= CLOSURE_JUMP_THRESHOLD;
+  useEffect(() => {
+    prevPathLengthRef.current = pathLength;
+  }, [pathLength]);
+
   return (
     <motion.path
       d={path}
@@ -32,7 +53,11 @@ export function CountryPath({
       strokeLinejoin="round"
       initial={false}
       animate={{ pathLength, pathSpacing: 1 }}
-      transition={{ duration: 0.3, ease: "linear" }}
+      transition={
+        isClosureJump
+          ? { duration: CLOSURE_TRANSITION_SECONDS, ease: "easeOut" }
+          : { duration: DRAW_TRANSITION_SECONDS, ease: "linear" }
+      }
       style={{ transition: "fill 0.6s ease" }}
     />
   );

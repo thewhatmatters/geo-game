@@ -64,6 +64,14 @@ This *is* the product; get it right before optimizing anything else.
 - Countries with 0 land neighbors (islands, e.g. Iceland, Sri Lanka):
   included in the daily rotation as legitimately harder days — no
   neighbor hints available at all.
+- Micro-archipelago days (Wallis and Futuna, Tuvalu, …): the target's
+  tiny true-scale footprint is **part of the intended hardness**, not a
+  defect — decided 2026-07-17 after the first quality-gauntlet run. The
+  accepted treatment is findability aids that preserve true relative
+  scale (size-derived frame/stroke boost, halo, locator rings — see
+  `targetBoost` in `lib/geo/scene.ts`); magnifier-inset cartouches were
+  considered and rejected. Don't "fix" island-day shape size without a
+  new explicit decision.
 - Countdown is shown as a prominent dot-matrix numeric readout in the
   top-center header (`DotMatrixNumber`) — supersedes the original
   "small, unobtrusive, top-right" spec; playtesting favored a more

@@ -1,1 +1,1 @@
-Geo: playtesting — mobile fixes, streak-multiplier idea; 3 files uncommitted
+3D migration shelved; next: SVG depth-cue polish

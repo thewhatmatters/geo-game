@@ -1,128 +1,102 @@
-# Handoff — Geo: playtesting session (scoring, mobile fixes, vault curation)
+# Handoff — Geo: Three.js exploration shelved; CLAUDE.md reconciled
 
-_Updated 2026-07-13 · session refresh checkpoint_
+_Updated 2026-07-14 · session end_
 
 ## Goal
 
-Playtest the "geo" daily geography guessing game end to end in a real
-browser, fixing bugs and adding polish/features as they surface. This is
-an ongoing iterative playtesting loop, not a single feature build — the
-overarching goal is a shippable, well-tuned v1 per `CLAUDE.md`/`PRD.md`.
+Ongoing playtesting/polish loop toward a shippable v1 (per CLAUDE.md /
+PRD.md). This session had two arcs: (1) reconcile the stale CLAUDE.md
+with what's actually implemented, and (2) research + spike + **decide
+against** a Three.js 2.5D map migration.
 
 ## Current state
 
-Commit `5d40e5b` on branch `loop/geo-daily-quiz` captured most of this
-session's work (world map/zoom/pan, scoring, keyboard theme, dot-matrix
-clock — see that commit and the vault for full detail). Since that
-commit, three more things happened, all typechecked/tested (99 passing)
-/built/verified live, **not yet committed** (see Git state):
+Branch `loop/geo-daily-quiz`, HEAD `b957e23`, **working tree clean**,
+typecheck ✓, 99/99 tests ✓, build ✓. Not pushed anywhere. Dev server
+not running (was killed at session end; `npm run dev` to restart).
 
-- **Streak-based score multiplier — idea drafted, one facet decided.**
-  Tabled in `ideas.md` and the vault as a still-unbuilt Idea (illustrative
-  escalating tier table, 2 days → +20 up to a 7+ day cap → +200,
-  reusing the existing `useStreak`/`current_streak` machinery, no new
-  state). One open question WAS resolved this session: the multiplier
-  keys off the existing *solve*-streak, not a new login/open-based
-  concept — captured as its own vault Decision, cross-linked from the
-  Idea. **Nothing implemented yet** — this is still just documentation
-  (repo `ideas.md` + vault), no code changes.
-- **Mobile responsiveness — two real bugs found and fixed.** Verified
-  live at 320/360/375/393px viewports (not just visual inspection):
-  1. `.keyboard__key`'s old fixed `min-width: 2.75rem` had no shrink
-     path, so the 10-key top row overflowed and clipped Q/P on every
-     phone narrower than ~480px. Fixed with
-     `clamp(1.7rem, 8vw, 2.75rem)` on both `min-width`/`min-height`
-     (`src/index.css` `.keyboard__key`), plus a responsive
-     `.keyboard__row` gap.
-  2. `.zoom-controls` was pinned `bottom-right`, landing directly on
-     top of the keyboard's `M` key on phone-height viewports (never
-     accounted for the keyboard's variable height). Moved to
-     `top-left`, paired visually with `.score-display` (`top-right`) —
-     the top corners are reliably clear regardless of round state.
-- **Terminology correction**: the vault-harvest skill is actually named
-  `curate-vault`, not `curate-knowledge` (user caught this; confirmed
-  via the actual `~/.claude/skills/` listing). Use `curate-vault` going
-  forward — the old name will 404 on `cd`.
+Two commits this session:
+
+- `1e2e59c` — CLAUDE.md reconciled with reality: zoom/pan mechanic,
+  live score, correct-streak bonus, dot-matrix clock all documented as
+  locked mechanics; real architecture map + npm commands replace the
+  "nothing scaffolded yet" placeholders; scrollWidth gotcha added;
+  `/curate-knowledge` → `/curate-vault` reference fixed. Also synced
+  HANDOFF.
+- `b957e23` — the shelved Three.js exploration record:
+  `docs/research/research-threejs-migration-geo.md` (+.html, 26
+  sources), `prd-3d-migration.md` (+.html) headed by a **SHELVED**
+  status note, and `ideas.md` gained an "SVG depth-cue polish" section.
+
+## The big decision this session (don't relitigate)
+
+**geo's map stays SVG — the 2.5D Three.js direction was researched,
+spiked end to end, PRD'd, and then deliberately shelved the same day.**
+The user compared the tuned spike against the current game and
+preferred the original. Why (full record in `prd-3d-migration.md`'s
+status note + vault decision
+`projects/geo/decisions/map-stays-svg-3d-shelved.md`):
+
+- Outline fidelity IS the game; the tilted camera foreshortens shapes.
+- The draw-on line doubles as the clock; a rising slab breaks that and
+  leaks the full shape early (hint-economy regression).
+- 3D wow front-loads (first ~10s); mobile perf/battery/bundle/migration
+  costs are permanent.
+
+The spike (`src/spike/`) and deps (`three`, `@react-three/fiber`,
+`@types/three`) were **removed without ever being committed** — do not
+look for them in history; the record is the documentation. The working
+CSS3D-label technique from the spike survives ONLY in the vault
+playbook `web/css3drenderer-perspective-dom-labels.md`.
 
 ## Next steps
 
-1. **CLAUDE.md is still stale** — carried over from before: its "locked
-   mechanics" section predates most of this whole extended session
-   (zoom/pan, streak bonus, live score, dot-matrix clock, confetti, and
-   now the mobile-responsive keyboard sizing). Still unresolved whether
-   to fold it in.
-2. If the streak-multiplier idea gets picked up for real: the tier
-   values (2 days → +20 etc.) are still illustrative/undecided — that's
-   the next open question on that specific feature, not the
-   solve-vs-login one (already settled).
-3. Nothing else is blocked — working tree is committed and clean.
+1. **SVG depth-cue polish** is the actionable takeaway, parked in
+   `ideas.md`: soft shadow under the target outline, lift-and-settle on
+   solve, gentle parallax on drag-pan, richer post-draw fill. Each is
+   afternoon-sized, independent, no new deps. This answers the user's
+   original "UI could be more appealing" itch within the SVG stack —
+   likely the next thing they pick up.
+2. Carried over, still open: streak-multiplier tier values
+   (illustrative only, in `ideas.md`); mobile landscape/tablet
+   playtest pass (portrait 320–393px was verified earlier, wider
+   viewports never checked).
+3. Nothing is blocked.
 
-## Key decisions (and why)
+## Other decisions this session
 
-- **Streak multiplier keys off solve, not login.** Reuses
-  `current_streak` exactly as-is (already resets to 0 on a failed/given-up
-  round) rather than building a new, separate "app opened" streak —
-  decided via `AskUserQuestion` specifically to avoid new persisted state
-  for a feature that isn't otherwise scoped/committed yet. Full
-  rationale: vault `projects/geo/decisions/streak-multiplier-keys-off-solve-not-login.md`.
-- **Zoom controls live top-left now, not bottom-right.** Not just a
-  mobile patch — bottom-right was fundamentally fragile because
-  `.app__bottom`'s height varies a lot (trivia, letter boxes,
-  round-outcome, share result, keyboard, give-up button all stack
-  there, and grow once a round ends). Top corners don't have that
-  problem. This fix generalizes past the specific mobile bug that
-  surfaced it.
-- **`document.body.scrollWidth` is not a reliable overflow check inside
-  a `position: fixed` app shell.** Learned the hard way this session:
-  the very first overflow-detection script used exactly that check and
-  reported `false` on every mobile viewport despite screenshots showing
-  clearly clipped content — because `.app` is `position: fixed`, and
-  fixed subtrees don't propagate overflow into `body.scrollWidth`. Now a
-  durable vault gotcha
-  (`web/position-fixed-hides-overflow-from-body-scrollwidth.md`) — future
-  mobile-overflow checks in this repo (or any `position:fixed`-shell app)
-  should use `getBoundingClientRect()` against the viewport, or a
-  screenshot, not scrollWidth alone.
-
-## Open questions / risks
-
-- CLAUDE.md/PRD.md's "locked" mechanics have drifted further from
-  what's actually implemented (see Next steps #2) — the gap keeps
-  growing each session this isn't addressed.
-- The streak-multiplier tier values are still just illustrative
-  round numbers, not derived from any real playtesting or retention
-  modeling.
-- Mobile verification this session covered phone-width portrait
-  viewports only (320–393px) — landscape orientation and tablet widths
-  haven't been checked.
+- **Radial opacity fade** was demoed in the spike as the 3D zoom-reveal
+  answer (vs a real spotlight — lights can't gate hints because line
+  materials are unlit). Moot for the shelved migration, but the
+  reasoning is captured in the vault gotcha if 3D ever returns.
+- A design grill on the migration PRD was started and ended after Q1
+  when the comparison prompted the shelving — the PRD's remaining open
+  questions are all moot.
 
 ## Files & commands in play
 
-- Branch: `loop/geo-daily-quiz`, HEAD at `9837ea0`.
-- `npm run dev` / `npm run typecheck` / `npm run test -- --run` / `npm run build`
-- This round's touched files: `src/index.css` (`.keyboard__key`,
-  `.keyboard__row`, `.zoom-controls`), `ideas.md`, `HANDOFF.md`.
-- Vault skill is `~/.claude/skills/curate-vault/` (NOT `curate-knowledge`
-  — that path no longer exists).
+- `npm run dev` / `npm run typecheck` / `npm run test` / `npm run build`
+- New this session: `docs/research/research-threejs-migration-geo.md`,
+  `prd-3d-migration.md` (SHELVED), `ideas.md` §"SVG depth-cue polish".
+- Vault articles written (via curate-vault, all verified):
+  `projects/geo/decisions/map-stays-svg-3d-shelved.md`,
+  `web/css3drenderer-perspective-dom-labels.md`,
+  `web/webgl-weak-primitives-lines-and-text.md`. The user hand-tweaked
+  the two web/ articles afterward (added cross-links to the shelving
+  decision) — those edits are intentional, keep them.
 
 ## Git state
 
-Branch `loop/geo-daily-quiz`. Clean — this round's work (mobile fixes +
-docs) was committed as `9837ea0` ("Fix mobile keyboard overflow and
-zoom-control collision") at the end of the session, per explicit user
-confirmation. Not pushed anywhere.
+Branch `loop/geo-daily-quiz`, clean at `b957e23`. Not pushed.
 
 ## Don't redo
 
-- Everything from the prior handoff's "Don't redo" still applies
-  (keyboard keycap color/weight iterations, solved-country label
-  placement, dot-matrix clock color) — see commit `5d40e5b`'s message
-  and the vault decisions for the settled state on each.
-- **Don't reposition `.zoom-controls` back to bottom-right** — tried,
-  caused a real collision with the keyboard's bottom row on
-  phone-height viewports, confirmed via live screenshot before the fix.
-- **Don't rely on `document.body.scrollWidth` alone to check for mobile
-  horizontal overflow in this repo** — the whole UI lives inside
-  `.app { position: fixed; inset: 0; }`, which hides overflow from that
-  check entirely (see the vault gotcha above). Use
-  `getBoundingClientRect()` per-element or a screenshot instead.
+- Everything in prior handoffs' "Don't redo" still applies (zoom
+  controls stay top-left; scrollWidth is not a valid overflow check in
+  this repo; keyboard/clock styling is settled).
+- **Don't re-propose the Three.js migration** — shelved with a
+  documented decision; reopening needs the user's explicit call.
+- **Don't decompose `prd-3d-migration.md`** — it's a SHELVED record,
+  not an active plan, and says so in its header.
+- CLAUDE.md is NO LONGER stale — the multi-session "fold the new
+  mechanics in" thread is resolved as of `1e2e59c`.

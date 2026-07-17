@@ -81,3 +81,32 @@ afternoon-sized independent task:
 
 Not scoped or committed — same parking-lot status as everything else in
 this file.
+
+## Revisit the micro-archipelago day pattern
+
+The 2026-07-17 decision (CLAUDE.md: tininess = intended hardness, rings/
+boost/halo accepted, insets rejected) got its first real playtest the same
+day — and the user's live reaction was "this one is weird, it's in the
+middle of the ocean… we'll need to revisit this pattern." The gauntlet's
+findability aids work (rings make the islands locatable), but the overall
+*feel* of a two-specks-in-a-void round may need more than findability:
+candidates when revisited include the previously-rejected inset
+cartouches, an ocean-context treatment (subtle bathymetry/texture at
+default zoom so the void reads as "Pacific" rather than "empty"), or
+island-day-specific framing copy. Don't reopen without weighing the
+existing decision's rationale — but the decision predates real play, and
+the first play vote was against the feel.
+
+## Transcontinental-territory days frame half the planet
+
+Discovered playtesting 2026-07-17: the Netherlands day frames a ~5000-unit
+viewBox because Natural Earth's NLD geometry includes the Caribbean
+Netherlands — the target-anchored frame spans Europe→Curaçao, the default
+"close-up" already shows a third of the world, and maxZoom floors at
+MIN_MAX_ZOOM. France (French Guiana/Polynesia), the US (Alaska/Hawaii),
+and other far-flung-territory countries will behave the same. Same family
+as the micro-archipelago question: bbox framing vs. scattered geometry.
+Candidate fix: frame on the LARGEST landmass cluster (clusterCenters
+machinery already exists) rather than the full bbox, with the outlying
+territories drawn but not framing-relevant. Needs a pass over which
+countries are affected before designing.

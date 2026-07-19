@@ -11,3 +11,5 @@ dist-ssr
 # byproduct, not source.
 /vite.config.js
 /vite.config.d.ts
+.vercel
+.env*

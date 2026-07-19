@@ -18,7 +18,6 @@ import { clampWorldCenterY, worldExtentY } from "./lib/geo/scene";
 import { viewBoxSize } from "./lib/geo/pathBounds";
 import { useStreak } from "./lib/streak/useStreak";
 import { generateShareString } from "./lib/share";
-import { computeScore, SCORE_SECONDS_MULTIPLIER } from "./lib/game/score";
 
 // Desired on-screen sizes (px) for the target outline stroke and neighbor
 // labels, converted to viewBox user-units via the scene's pxScale so they
@@ -237,16 +236,15 @@ function App({ boot }: { boot: RoundBoot }) {
     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
   }, [round.status]);
 
-  // Transient "+20"/"-150" popup next to the score, one per discrete
-  // score event (see ScoreEvent) — NOT for the ordinary per-tick decay,
-  // which just moves the score number itself. Keyed on the event's own id
-  // so a repeated identical delta back to back still restarts the fade
-  // instead of silently no-opping. (No events are emitted under the pure
-  // pacer; this comes alive with the event-sourced score economy.)
+  // Transient "+200"/"-150" popup next to the score, one per discrete
+  // score event (see ScoreEvent) — every letter guess emits one; the clock
+  // emits nothing. Keyed on the event's own id so a repeated identical
+  // delta back to back still restarts the fade instead of silently
+  // no-opping.
   const [activeDelta, setActiveDelta] = useState<{ id: number; points: number } | null>(null);
   useEffect(() => {
     if (!round.scoreEvent) return;
-    setActiveDelta({ id: round.scoreEvent.id, points: round.scoreEvent.secondsDelta * SCORE_SECONDS_MULTIPLIER });
+    setActiveDelta({ id: round.scoreEvent.id, points: round.scoreEvent.delta });
     const timer = setTimeout(() => setActiveDelta(null), SCORE_DELTA_DISPLAY_MS);
     return () => clearTimeout(timer);
   }, [round.scoreEvent]);
@@ -538,11 +536,11 @@ function App({ boot }: { boot: RoundBoot }) {
       <div className="app">
         {/* Fixed corner, independent of the centered .app__top/.app__bottom
             flow. Always visible (not gated on solve) — it's live during
-            play (ticks with the clock) and only force-zeroes on failure
+            play (moves on every guess) and only force-zeroes on failure
             (see computeScore); no spoiler concern since it never reveals
             the country itself. */}
         <p className="score-display" data-testid="score-display">
-          Score: {computeScore(round.status, round.remainingSeconds)}
+          Score: {round.score}
           {activeDelta && (
             <span
               key={activeDelta.id}

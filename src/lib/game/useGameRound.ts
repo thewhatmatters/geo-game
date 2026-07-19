@@ -7,7 +7,9 @@ import {
   outlineCompletion,
   neighborCompletion,
   latestScoreEvent,
+  currentMultiplier,
 } from "./round";
+import { computeScore } from "./score";
 import type { DisplayChar, LetterState, RoundStatus, ScoreEvent } from "./round";
 
 // Re-exported so existing consumers keep one import site for the round's
@@ -35,6 +37,10 @@ export interface GameRound {
   giveUp: () => void;
   /** The most recent score event, or null before any has happened — see ScoreEvent. */
   scoreEvent: ScoreEvent | null;
+  /** Display score: the event-sourced running total, zeroed on a failed round. */
+  score: number;
+  /** The combo multiplier the next correct letter would earn. */
+  multiplier: number;
 }
 
 /**
@@ -78,5 +84,7 @@ export function useGameRound(target: Country, zoomMax: number): GameRound {
     guessLetter,
     giveUp,
     scoreEvent: latestScoreEvent(state),
+    score: computeScore(state.status, state.score),
+    multiplier: currentMultiplier(state),
   };
 }

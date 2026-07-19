@@ -6,6 +6,7 @@ import {
   outlineCompletion,
   neighborCompletion,
   latestScoreEvent,
+  currentMultiplier,
   ROUND_DURATION_SECONDS,
 } from "./round";
 import type { RoundEvent, RoundState } from "./round";
@@ -93,7 +94,6 @@ describe("guessing", () => {
     expect(state.guesses).toEqual({ Z: "wrong" });
     expect(state.remainingSeconds).toBe(60);
     expect(state.status).toBe("running");
-    expect(latestScoreEvent(state)).toBeNull();
   });
 
   it("a wrong guess at 1s remaining no longer fails the round", () => {
@@ -107,7 +107,6 @@ describe("guessing", () => {
     state = run(state, guess("P"), guess("E"), guess("R"));
     expect(state.correctStreak).toBe(3);
     expect(state.remainingSeconds).toBe(59);
-    expect(latestScoreEvent(state)).toBeNull();
   });
 
   it("a wrong guess resets the correct streak", () => {
@@ -127,7 +126,101 @@ describe("guessing", () => {
     const before = run(createRound(CHAD, 3), tick(10)); // 50 remaining
     const after = run(before, guess("C"), guess("Z"), guess("X"), guess("H"), guess("A"));
     expect(after.remainingSeconds).toBe(before.remainingSeconds);
-    expect(after.scoreEvents).toEqual([]);
+  });
+});
+
+describe("score economy (event-sourced, never a function of the clock)", () => {
+  /** 5 unique letters -> the -200 tier. */
+  const CHINA = { name: "China", unique_letters: 5 };
+  /** 6 unique letters -> the -150 tier. */
+  const BRAZIL = { name: "Brazil", unique_letters: 6 };
+  /** 10 unique letters -> the -100 tier. */
+  const SWITZERLAND = { name: "Switzerland", unique_letters: 10 };
+
+  it("starts at zero with an empty event log", () => {
+    const start = createRound(PERU, 3);
+    expect(start.score).toBe(0);
+    expect(start.scoreEvents).toEqual([]);
+    expect(latestScoreEvent(start)).toBeNull();
+  });
+
+  it("builds the combo: consecutive correct letters pay x1, x1.5, then x2", () => {
+    const one = run(createRound(PERU, 3), guess("P"));
+    expect(one.score).toBe(100);
+    expect(latestScoreEvent(one)).toMatchObject({ type: "correct", delta: 100, multiplier: 1 });
+
+    const two = run(one, guess("E"));
+    expect(two.score).toBe(250);
+    expect(latestScoreEvent(two)).toMatchObject({ type: "correct", delta: 150, multiplier: 1.5 });
+
+    const three = run(two, guess("R"));
+    expect(three.score).toBe(450);
+    expect(latestScoreEvent(three)).toMatchObject({ type: "correct", delta: 200, multiplier: 2 });
+  });
+
+  it("caps the combo at x2 no matter how long the streak runs", () => {
+    const state = run(createRound(SWITZERLAND, 3), guess("S"), guess("W"), guess("I"), guess("T"), guess("Z"));
+    expect(latestScoreEvent(state)).toMatchObject({ delta: 200, multiplier: 2 });
+    expect(currentMultiplier(state)).toBe(2);
+    expect(state.score).toBe(100 + 150 + 200 + 200 + 200);
+  });
+
+  it("resets the combo to x1 on a wrong letter, and rebuilds from there", () => {
+    const built = run(createRound(SWITZERLAND, 3), guess("S"), guess("W"), guess("I")); // 100+150+200 = 450
+    expect(built.score).toBe(450);
+
+    const broken = run(built, guess("Q")); // 10 unique -> -100
+    expect(broken.correctStreak).toBe(0);
+    expect(currentMultiplier(broken)).toBe(1);
+    expect(latestScoreEvent(broken)).toMatchObject({ type: "wrong", delta: -100, multiplier: 1 });
+    expect(broken.score).toBe(350);
+
+    const rebuilt = run(broken, guess("T"));
+    expect(latestScoreEvent(rebuilt)).toMatchObject({ delta: 100, multiplier: 1 });
+    expect(rebuilt.score).toBe(450);
+  });
+
+  it("deducts -200 for a wrong letter on a <=5 unique-letter target", () => {
+    const state = run(createRound(CHINA, 3), guess("C"), guess("Q")); // +100, -200 -> floors at 0
+    expect(latestScoreEvent(state)).toMatchObject({ type: "wrong", delta: -200 });
+  });
+
+  it("deducts -150 for a wrong letter on a 6-9 unique-letter target", () => {
+    const state = run(createRound(BRAZIL, 3), guess("Q"));
+    expect(latestScoreEvent(state)).toMatchObject({ type: "wrong", delta: -150 });
+    expect(state.score).toBe(0);
+  });
+
+  it("deducts -100 for a wrong letter on a 10+ unique-letter target", () => {
+    const state = run(createRound(SWITZERLAND, 3), guess("Q"));
+    expect(latestScoreEvent(state)).toMatchObject({ type: "wrong", delta: -100 });
+  });
+
+  it("floors the running score at 0 — the event still reports its full nominal delta", () => {
+    const state = run(createRound(CHAD, 3), guess("C"), guess("Q")); // +100, then -200
+    expect(state.score).toBe(0);
+    expect(latestScoreEvent(state)).toMatchObject({ delta: -200 });
+
+    const deeper = run(state, guess("X"), guess("Y"));
+    expect(deeper.score).toBe(0);
+  });
+
+  it("emits exactly one event per scoring guess, with monotonic ids", () => {
+    const state = run(createRound(PERU, 3), guess("P"), guess("Q"), guess("E"), guess("Q"), guess("3"));
+    expect(state.scoreEvents.map((e) => e.id)).toEqual([1, 2, 3]);
+  });
+
+  it("never emits an event for a tick — the clock earns nothing", () => {
+    const state = run(createRound(PERU, 3), tick(10), tick(20));
+    expect(state.scoreEvents).toEqual([]);
+    expect(state.score).toBe(0);
+  });
+
+  it("keeps the earned score frozen once the round is solved", () => {
+    const solved = run(createRound(PERU, 3), guess("P"), guess("E"), guess("R"), guess("U"));
+    expect(solved.status).toBe("solved");
+    expect(solved.score).toBe(100 + 150 + 200 + 200);
+    expect(run(solved, guess("Z"), tick(10)).score).toBe(solved.score);
   });
 });
 

@@ -1,5 +1,11 @@
 import type { Country } from "./dailyCountry";
 import { applyZoomDelta, ZOOM_MIN } from "./zoom";
+import {
+  applyScoreDelta,
+  comboMultiplier,
+  correctLetterPoints,
+  wrongLetterPenalty,
+} from "./score";
 
 /**
  * RoundCore — the round's entire rulebook as one pure state machine.
@@ -40,15 +46,21 @@ export interface DisplayChar {
 
 /**
  * One discrete score event for the UI to surface as a transient "+200"/
- * "-150" popup next to the score — deliberately NOT emitted for ordinary
- * per-tick decay. `id` is a monotonic counter so the UI can key a fresh
- * animation off it even if the same delta repeats back to back. Nothing
- * emits these yet (the old time-economy events are gone with the pure
- * pacer); the event-sourced score economy re-populates this log.
+ * "-150" popup next to the score. The clock emits nothing — it's a pure
+ * pacer — so every event here comes from a letter guess. `id` is a
+ * monotonic counter so the UI can key a fresh animation off it even if the
+ * same delta repeats back to back.
+ *
+ * `delta` is the rule's nominal delta, NOT the clamped change to the
+ * running total: a -200 at a score of 50 still reports -200 while the
+ * score floors at 0. The popup shows what the rule charged you.
  */
 export interface ScoreEvent {
   id: number;
-  secondsDelta: number;
+  type: "correct" | "wrong";
+  delta: number;
+  /** The combo multiplier in force after this event — x1 on any wrong letter. */
+  multiplier: number;
 }
 
 export interface RoundState {
@@ -59,13 +71,15 @@ export interface RoundState {
   readonly targetName: string;
   readonly uniqueLetterCount: number;
   guesses: Record<string, LetterState>;
-  /** Consecutive correct guesses, reset by any wrong guess — the raw material the combo multiplier is derived from. */
+  /** Consecutive correct guesses, reset by any wrong guess — the combo multiplier is derived from this (see lib/game/score.ts). */
   correctStreak: number;
+  /** Running event-sourced score, already floored at SCORE_FLOOR. Never a function of the clock. */
+  score: number;
   zoom: number;
   /** Furthest zoom-out reached this round — lets consumers distinguish new territory from re-crossed territory (see lib/game/zoom.ts). */
   maxZoomReached: number;
   readonly zoomMax: number;
-  /** Newest-last — see latestScoreEvent. Always empty under the pure pacer; the score economy re-populates it. */
+  /** Newest-last — see latestScoreEvent. One entry per scoring guess; the clock never appends. */
   scoreEvents: ScoreEvent[];
 }
 
@@ -92,6 +106,7 @@ export function createRound(
     uniqueLetterCount: target.unique_letters,
     guesses: {},
     correctStreak: 0,
+    score: 0,
     zoom: ZOOM_MIN,
     maxZoomReached: ZOOM_MIN,
     zoomMax,
@@ -105,6 +120,18 @@ function tickClock(state: RoundState, seconds: number): RoundState {
   return { ...state, remainingSeconds: Math.max(0, state.remainingSeconds - seconds) };
 }
 
+/** Appends a score event and folds its delta into the running total (floored). */
+function withScoreEvent(
+  state: RoundState,
+  event: Omit<ScoreEvent, "id">,
+): RoundState {
+  return {
+    ...state,
+    score: applyScoreDelta(state.score, event.delta),
+    scoreEvents: [...state.scoreEvents, { ...event, id: state.scoreEvents.length + 1 }],
+  };
+}
+
 function reduceGuess(state: RoundState, rawLetter: string): RoundState {
   const letter = rawLetter.toUpperCase();
   if (!/^[A-Z]$/.test(letter) || state.guesses[letter]) return state;
@@ -113,14 +140,23 @@ function reduceGuess(state: RoundState, rawLetter: string): RoundState {
 
   if (required.has(letter)) {
     const guesses = { ...state.guesses, [letter]: "correct" as const };
-    let next: RoundState = { ...state, guesses, correctStreak: state.correctStreak + 1 };
+    const correctStreak = state.correctStreak + 1;
+    let next = withScoreEvent({ ...state, guesses, correctStreak }, {
+      type: "correct",
+      delta: correctLetterPoints(correctStreak),
+      multiplier: comboMultiplier(correctStreak),
+    });
     const solved = [...required].every((l) => guesses[l] === "correct");
     if (solved) next = { ...next, status: "solved" };
     return next;
   }
 
   const guesses = { ...state.guesses, [letter]: "wrong" as const };
-  return { ...state, guesses, correctStreak: 0 };
+  return withScoreEvent({ ...state, guesses, correctStreak: 0 }, {
+    type: "wrong",
+    delta: -wrongLetterPenalty(state.uniqueLetterCount),
+    multiplier: comboMultiplier(0),
+  });
 }
 
 function reduceZoom(state: RoundState, deltaY: number): RoundState {
@@ -179,6 +215,11 @@ export function neighborCompletion(state: RoundState): number {
   if (state.status !== "running") return 100;
   const elapsed = state.initialSeconds - state.remainingSeconds;
   return Math.min(100, (elapsed / state.initialSeconds) * 100);
+}
+
+/** The multiplier the NEXT correct letter would earn — what the UI shows as the live combo. */
+export function currentMultiplier(state: RoundState): number {
+  return comboMultiplier(state.correctStreak + 1);
 }
 
 export function latestScoreEvent(state: RoundState): ScoreEvent | null {

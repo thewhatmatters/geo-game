@@ -9,32 +9,15 @@ import { applyZoomDelta, ZOOM_MIN } from "./zoom";
  * is a plain function of (state, event) here, testable with no timers,
  * no subscriptions, no React. useGameRound is a thin adapter that feeds
  * this reducer TICK events from a real interval.
+ *
+ * Round 2 (US-001): the clock is a pure pacer — it only counts 60→0 and
+ * drives hint reveal. Wrong-guess / streak-bonus / zoom time mutations are
+ * gone; score-based economy lands in US-002/US-004. Soft-zero lockout
+ * outcomes land in US-003 — until then, hitting 0:00 does not fail the
+ * round (guessing continues; hints are fully drawn).
  */
 
 export const ROUND_DURATION_SECONDS = 60;
-
-/**
- * Placeholder values pending playtesting (see CLAUDE.md "Open design
- * decisions" — exact tiers/values are explicitly not finalized). Keep as a
- * tunable table, not inline arithmetic, so retuning doesn't touch logic.
- */
-export const PENALTY_TIERS: ReadonlyArray<{
-  maxUniqueLetters: number;
-  penaltySeconds: number;
-}> = [
-  { maxUniqueLetters: 5, penaltySeconds: 20 },
-  { maxUniqueLetters: 9, penaltySeconds: 15 },
-  { maxUniqueLetters: Infinity, penaltySeconds: 10 },
-];
-
-export function getPenaltySeconds(uniqueLetterCount: number): number {
-  const tier = PENALTY_TIERS.find((t) => uniqueLetterCount <= t.maxUniqueLetters);
-  return tier ? tier.penaltySeconds : PENALTY_TIERS[PENALTY_TIERS.length - 1].penaltySeconds;
-}
-
-/** Every this many CONSECUTIVE correct letter guesses (streak reset by any wrong guess) grants a flat time bonus — positive reinforcement to offset the wrong-guess-only penalty design. */
-export const CORRECT_STREAK_BONUS_INTERVAL = 2;
-export const CORRECT_STREAK_BONUS_SECONDS = 2;
 
 /**
  * Fraction of the clock the target outline takes to fully draw. Neighbor
@@ -42,9 +25,6 @@ export const CORRECT_STREAK_BONUS_SECONDS = 2;
  * exactly as the clock hits 0 — see the selectors below.
  */
 export const HINT_ONSET_FRACTION = 0.45;
-
-/** How many discrete bonus/penalty events the state retains — the UI only ever shows the latest; the rest exist for tests/debugging. */
-const SCORE_EVENT_LOG_CAP = 8;
 
 export type RoundStatus = "running" | "solved" | "failed";
 
@@ -59,12 +39,10 @@ export interface DisplayChar {
 }
 
 /**
- * One discrete time-economy event (a bonus or a penalty) for the UI to
- * surface as a transient "+20"/"-150" popup next to the score — deliberately
- * NOT emitted for ordinary per-tick decay, only for the flat one-time
- * adjustments (streak bonus, wrong guess, zoom-out). `id` is a monotonic
- * counter so the UI can key a fresh animation off it even if the same
- * secondsDelta repeats back to back.
+ * Discrete economy event for the UI to surface as a transient popup.
+ * Kept as a secondsDelta shape for now (legacy score readout multiplies by
+ * SCORE_SECONDS_MULTIPLIER); US-002 rewrites this to typed score deltas.
+ * US-001 emits nothing — no time-based popups remain.
  */
 export interface ScoreEvent {
   id: number;
@@ -74,18 +52,18 @@ export interface ScoreEvent {
 export interface RoundState {
   status: RoundStatus;
   remainingSeconds: number;
-  /** A bonus can never push remainingSeconds past where the round started — otherwise a long correct streak could bank unbounded time. */
+  /** Starting duration — used only as the pacer's total length (hint completion math). Never a cap for bonuses (bonuses no longer exist as time). */
   readonly initialSeconds: number;
   readonly targetName: string;
   readonly uniqueLetterCount: number;
   guesses: Record<string, LetterState>;
-  /** Consecutive correct guesses, reset by any wrong guess — every CORRECT_STREAK_BONUS_INTERVAL-th one grants a flat time bonus. */
+  /** Consecutive correct guesses, reset by any wrong guess — retained for US-002 combo; no longer grants time. */
   correctStreak: number;
   zoom: number;
-  /** Furthest zoom-out reached this round — zooming back in and out over already-seen territory never re-charges (see lib/game/zoom.ts). */
+  /** Furthest zoom-out reached this round — zooming back in and out over already-seen territory is free (pay-once tracking; score charge lands in US-004). */
   maxZoomReached: number;
   readonly zoomMax: number;
-  /** Newest-last, capped at SCORE_EVENT_LOG_CAP — see latestScoreEvent. */
+  /** Newest-last, capped at SCORE_EVENT_LOG_CAP — see latestScoreEvent. Empty under US-001 pure-pacer rules. */
   scoreEvents: ScoreEvent[];
 }
 
@@ -119,21 +97,12 @@ export function createRound(
   };
 }
 
-function pushScoreEvent(state: RoundState, secondsDelta: number): RoundState {
-  const lastId = state.scoreEvents.length ? state.scoreEvents[state.scoreEvents.length - 1].id : 0;
-  const scoreEvents = [...state.scoreEvents, { id: lastId + 1, secondsDelta }].slice(
-    -SCORE_EVENT_LOG_CAP,
-  );
-  return { ...state, scoreEvents };
-}
-
-/** Time deduction with tick semantics: hitting 0 fails the round. Shared by TICK decay, wrong-guess penalties, and zoom-out charges. */
-function deductTime(state: RoundState, seconds: number): RoundState {
-  const remainingSeconds = Math.max(0, state.remainingSeconds - seconds);
-  if (remainingSeconds <= 0) {
-    return { ...state, remainingSeconds: 0, status: "failed" };
-  }
-  return { ...state, remainingSeconds };
+/**
+ * Pure pacer tick: subtracts elapsed wall time, clamps at 0, never ends the
+ * round. Soft-zero lockout (US-003) will add post-zero rules later.
+ */
+function tickClock(state: RoundState, seconds: number): RoundState {
+  return { ...state, remainingSeconds: Math.max(0, state.remainingSeconds - seconds) };
 }
 
 function reduceGuess(state: RoundState, rawLetter: string): RoundState {
@@ -147,48 +116,31 @@ function reduceGuess(state: RoundState, rawLetter: string): RoundState {
     const correctStreak = state.correctStreak + 1;
     let next: RoundState = { ...state, guesses, correctStreak };
 
-    if (correctStreak % CORRECT_STREAK_BONUS_INTERVAL === 0) {
-      next = {
-        ...next,
-        remainingSeconds: Math.min(next.initialSeconds, next.remainingSeconds + CORRECT_STREAK_BONUS_SECONDS),
-      };
-      next = pushScoreEvent(next, CORRECT_STREAK_BONUS_SECONDS);
-    }
-
     const solved = [...required].every((l) => guesses[l] === "correct");
     if (solved) next = { ...next, status: "solved" };
     return next;
   }
 
-  const guesses = { ...state.guesses, [letter]: "wrong" as const };
-  const penalty = getPenaltySeconds(state.uniqueLetterCount);
-  let next: RoundState = { ...state, guesses, correctStreak: 0 };
-  next = pushScoreEvent(next, -penalty);
-  return deductTime(next, penalty);
+  return { ...state, guesses: { ...state.guesses, [letter]: "wrong" as const }, correctStreak: 0 };
 }
 
 function reduceZoom(state: RoundState, deltaY: number): RoundState {
   const result = applyZoomDelta(state.zoom, deltaY, state.maxZoomReached, state.zoomMax);
-  let next: RoundState = { ...state, zoom: result.zoom, maxZoomReached: result.maxZoomReached };
-  // Zoom stays available after the round ends so the player can explore the
-  // revealed map — but the time cost only applies while running (there's no
-  // clock left to dock afterwards).
-  if (result.penaltySeconds > 0 && state.status === "running") {
-    next = pushScoreEvent(next, -result.penaltySeconds);
-    next = deductTime(next, result.penaltySeconds);
-  }
-  return next;
+  // Zoom never costs time (US-001). Step tracking (maxZoomReached) stays so
+  // UI pulses / US-004 score charges can still key off newly-crossed steps.
+  // Zoom stays available after the round ends so the player can explore.
+  return { ...state, zoom: result.zoom, maxZoomReached: result.maxZoomReached };
 }
 
 export function reduceRound(state: RoundState, event: RoundEvent): RoundState {
   // ZOOM is the one event that stays live after the round ends (free, see
-  // reduceZoom); everything else is a no-op once the clock has stopped.
+  // reduceZoom); everything else is a no-op once the round has terminal status.
   if (event.type === "ZOOM") return reduceZoom(state, event.deltaY);
   if (state.status !== "running") return state;
 
   switch (event.type) {
     case "TICK":
-      return deductTime(state, event.deltaSeconds);
+      return tickClock(state, event.deltaSeconds);
     case "GUESS":
       return reduceGuess(state, event.letter);
     case "GIVE_UP":
@@ -210,9 +162,11 @@ export function displayChars(state: RoundState): DisplayChar[] {
 
 /**
  * 0–100: the target outline finishes drawing at HINT_ONSET_FRACTION of the
- * round — it's the primary hint. Any terminal status (solved, timed out,
- * give-up) completes it: on failure the name stays hidden, so the finished
- * shape is the player's only geographic payoff for the round.
+ * round — it's the primary hint. Any terminal status (solved, give-up)
+ * completes it: on failure the name stays hidden, so the finished shape is
+ * the player's only geographic payoff for the round. At remainingSeconds=0
+ * while still running (soft zero), elapsed hits 100% of the pacer so both
+ * outlines are fully drawn.
  */
 export function outlineCompletion(state: RoundState): number {
   if (state.status !== "running") return 100;

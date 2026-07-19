@@ -18,8 +18,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Foundation for the whole economy. Files: src/lib/game/clock.ts, src/lib/game/round.ts, src/lib/game/zoom.ts. Do not delete old economy tests wholesale - migrate each rule's test to its new score-based counterpart in US-002/US-004."
+      "passes": true,
+      "notes": "Foundation for the whole economy. Files: src/lib/game/clock.ts, src/lib/game/round.ts, src/lib/game/zoom.ts. Do not delete old economy tests wholesale - migrate each rule's test to its new score-based counterpart in US-002/US-004. Clock logic lives in round.ts (no separate clock.ts). Time mutations removed; soft zero keeps status running at 0:00."
     },
     {
       "id": "US-002",

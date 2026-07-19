@@ -27,13 +27,13 @@ export interface GameRound {
   neighborCompletion: number;
   /** Current map zoom level (1 = default framing, up to the scene's zoomMax = the whole world visible). */
   zoom: number;
-  /** Furthest zoom-out reached this round — only NEW territory beyond this charges a penalty (see lib/game/zoom.ts). Surfaced so the UI can react to paid step-crossings (App's reveal pulse) without re-deriving the economy. */
+  /** Furthest zoom-out reached this round — pay-once step tracking for UI pulses (score charge lands in US-004). */
   maxZoomReached: number;
-  /** Feed raw wheel/pinch deltaY here — clamps zoom and applies the zoom-out time penalty internally. */
+  /** Feed raw wheel/pinch deltaY here — clamps zoom; no time cost (clock is a pure pacer). */
   handleZoomWheel: (deltaY: number) => void;
   guessLetter: (letter: string) => void;
   giveUp: () => void;
-  /** The most recent bonus/penalty event, or null before any has happened — see ScoreEvent. */
+  /** The most recent score event, or null — empty under pure-pacer rules until US-002. */
   scoreEvent: ScoreEvent | null;
 }
 

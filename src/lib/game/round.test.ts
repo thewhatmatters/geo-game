@@ -6,15 +6,12 @@ import {
   outlineCompletion,
   neighborCompletion,
   latestScoreEvent,
-  getPenaltySeconds,
-  PENALTY_TIERS,
   ROUND_DURATION_SECONDS,
-  CORRECT_STREAK_BONUS_SECONDS,
 } from "./round";
 import type { RoundEvent, RoundState } from "./round";
-import { ZOOM_PENALTY_SECONDS, ZOOM_SENSITIVITY, ZOOM_STEP } from "./zoom";
+import { ZOOM_SENSITIVITY, ZOOM_STEP } from "./zoom";
 
-/** "Chad": 4 unique letters -> harshest tier (-20s). */
+/** "Chad": 4 unique letters. */
 const CHAD = { name: "Chad", unique_letters: 4 };
 /** "Peru": 4 unique letters, no repeats — smallest convenient solve. */
 const PERU = { name: "Peru", unique_letters: 4 };
@@ -28,28 +25,7 @@ const guess = (letter: string): RoundEvent => ({ type: "GUESS", letter });
 /** deltaY that crosses exactly one ZOOM_STEP of zoom-out. */
 const oneZoomStep = (): RoundEvent => ({ type: "ZOOM", deltaY: ZOOM_STEP / ZOOM_SENSITIVITY });
 
-describe("getPenaltySeconds", () => {
-  it("applies the harshest tier at <=5 unique letters", () => {
-    expect(getPenaltySeconds(1)).toBe(20);
-    expect(getPenaltySeconds(5)).toBe(20);
-  });
-
-  it("applies the middle tier at 6-9 unique letters", () => {
-    expect(getPenaltySeconds(6)).toBe(15);
-    expect(getPenaltySeconds(9)).toBe(15);
-  });
-
-  it("applies the lightest tier at 10+ unique letters", () => {
-    expect(getPenaltySeconds(10)).toBe(10);
-    expect(getPenaltySeconds(26)).toBe(10);
-  });
-
-  it("exposes the tiers as a named, inspectable table", () => {
-    expect(PENALTY_TIERS.length).toBe(3);
-  });
-});
-
-describe("clock rules (ported from GameClock)", () => {
+describe("clock rules (pure pacer)", () => {
   it("starts at the 60-second default, running", () => {
     const state = createRound(CHAD, 3);
     expect(state.status).toBe("running");
@@ -65,17 +41,25 @@ describe("clock rules (ported from GameClock)", () => {
     expect(state.remainingSeconds).toBe(47.5);
   });
 
-  it("transitions to failed when the clock reaches 0, clamped at 0", () => {
+  it("clamps at 0 without failing the round (soft zero until US-003)", () => {
     const state = run(createRound(CHAD, 3, 5), tick(10));
-    expect(state.status).toBe("failed");
+    expect(state.status).toBe("running");
     expect(state.remainingSeconds).toBe(0);
   });
 
-  it("ignores further ticks and guesses once failed", () => {
-    const state = run(createRound(CHAD, 3, 5), tick(10), tick(5), guess("X"));
-    expect(state.status).toBe("failed");
-    expect(state.remainingSeconds).toBe(0);
-    expect(state.guesses).toEqual({});
+  it("keeps accepting ticks and guesses after the clock hits 0", () => {
+    const atZero = run(createRound(CHAD, 3, 5), tick(10));
+    expect(atZero.remainingSeconds).toBe(0);
+    expect(atZero.status).toBe("running");
+
+    const stillZero = run(atZero, tick(5));
+    expect(stillZero.remainingSeconds).toBe(0);
+    expect(stillZero.status).toBe("running");
+
+    const afterGuess = run(atZero, guess("X"));
+    expect(afterGuess.status).toBe("running");
+    expect(afterGuess.remainingSeconds).toBe(0);
+    expect(afterGuess.guesses).toEqual({ X: "wrong" });
   });
 
   it("give-up transitions to failed immediately regardless of remaining time", () => {
@@ -83,9 +67,16 @@ describe("clock rules (ported from GameClock)", () => {
     expect(state.status).toBe("failed");
     expect(state.remainingSeconds).toBe(60);
   });
+
+  it("ignores further ticks and guesses once given up", () => {
+    const state = run(createRound(CHAD, 3), { type: "GIVE_UP" }, tick(5), guess("X"));
+    expect(state.status).toBe("failed");
+    expect(state.remainingSeconds).toBe(60);
+    expect(state.guesses).toEqual({});
+  });
 });
 
-describe("guessing", () => {
+describe("guessing (no time mutations)", () => {
   it("locks a correct letter into guesses and reveals every instance", () => {
     const state = run(createRound(CHAD, 3), guess("a"));
     expect(state.guesses).toEqual({ A: "correct" });
@@ -100,33 +91,39 @@ describe("guessing", () => {
     expect(run(first, guess(" "))).toBe(first);
   });
 
-  it("subtracts the tier penalty on a wrong guess and logs a score event", () => {
-    const state = run(createRound(CHAD, 3), guess("Z"));
+  it("wrong guess records the letter and does not change remainingSeconds", () => {
+    const start = run(createRound(CHAD, 3), tick(3));
+    const state = run(start, guess("Z"));
     expect(state.guesses).toEqual({ Z: "wrong" });
-    expect(state.remainingSeconds).toBe(60 - 20);
-    expect(latestScoreEvent(state)).toMatchObject({ secondsDelta: -20 });
-  });
-
-  it("a wrong guess that drains the clock fails the round", () => {
-    const state = run(createRound(CHAD, 3, 15), guess("Z"));
-    expect(state.status).toBe("failed");
-    expect(state.remainingSeconds).toBe(0);
-  });
-
-  it("grants the streak bonus every 2nd consecutive correct guess, clamped at the starting duration", () => {
-    let state = run(createRound(PERU, 3), tick(1)); // 59 remaining
-    state = run(state, guess("P")); // streak 1, no bonus
+    expect(state.remainingSeconds).toBe(start.remainingSeconds);
     expect(latestScoreEvent(state)).toBeNull();
-    state = run(state, guess("E")); // streak 2 -> +2, clamped to 60
-    expect(state.remainingSeconds).toBe(60);
-    expect(latestScoreEvent(state)).toMatchObject({ secondsDelta: CORRECT_STREAK_BONUS_SECONDS });
   });
 
-  it("a wrong guess resets the correct streak", () => {
-    let state = run(createRound(PERU, 3), guess("P"), guess("Z")); // streak back to 0
-    state = run(state, guess("E")); // streak 1 again -> no bonus
-    const events = state.scoreEvents.map((e) => e.secondsDelta);
-    expect(events).toEqual([-20]); // only the wrong-guess penalty
+  it("wrong guess never fails the round via the clock", () => {
+    const state = run(createRound(CHAD, 3, 15), guess("Z"));
+    expect(state.status).toBe("running");
+    expect(state.remainingSeconds).toBe(15);
+  });
+
+  it("correct streak no longer grants time (clock is a pure pacer)", () => {
+    let state = run(createRound(PERU, 3), tick(1)); // 59 remaining
+    state = run(state, guess("P")); // streak 1
+    expect(state.remainingSeconds).toBe(59);
+    expect(state.correctStreak).toBe(1);
+    state = run(state, guess("E")); // streak 2 — no +2s bonus
+    expect(state.remainingSeconds).toBe(59);
+    expect(state.correctStreak).toBe(2);
+    expect(latestScoreEvent(state)).toBeNull();
+  });
+
+  it("a wrong guess resets the correct streak without mutating time", () => {
+    let state = run(createRound(PERU, 3), tick(2), guess("P"), guess("Z"));
+    expect(state.correctStreak).toBe(0);
+    expect(state.remainingSeconds).toBe(58);
+    state = run(state, guess("E")); // streak 1 again
+    expect(state.correctStreak).toBe(1);
+    expect(state.remainingSeconds).toBe(58);
+    expect(state.scoreEvents).toEqual([]);
   });
 
   it("solves the round when every unique letter is correct", () => {
@@ -135,28 +132,29 @@ describe("guessing", () => {
     expect(displayChars(state).every((c) => c.revealed)).toBe(true);
   });
 
-  it("score-event ids are monotonic even for identical deltas", () => {
-    const state = run(createRound(CHAD, 3), guess("Z"), guess("X"));
-    const [a, b] = state.scoreEvents;
-    expect(a.secondsDelta).toBe(b.secondsDelta);
-    expect(b.id).toBeGreaterThan(a.id);
+  it("guess events never emit time-based score events", () => {
+    const state = run(createRound(CHAD, 3), guess("Z"), guess("X"), guess("C"));
+    expect(state.scoreEvents).toEqual([]);
+    expect(latestScoreEvent(state)).toBeNull();
   });
 });
 
-describe("zoom economy", () => {
-  it("charges a flat penalty per new zoom-out step crossed", () => {
+describe("zoom (no time cost)", () => {
+  it("updates zoom without changing remainingSeconds", () => {
     const state = run(createRound(CHAD, 10), oneZoomStep());
     expect(state.zoom).toBeCloseTo(1 + ZOOM_STEP, 5);
-    expect(state.remainingSeconds).toBe(60 - ZOOM_PENALTY_SECONDS);
-    expect(latestScoreEvent(state)).toMatchObject({ secondsDelta: -ZOOM_PENALTY_SECONDS });
+    expect(state.remainingSeconds).toBe(60);
+    expect(state.scoreEvents).toEqual([]);
   });
 
-  it("never re-charges already-seen territory", () => {
+  it("tracks maxZoomReached pay-once without charging time on re-cross", () => {
     const out = run(createRound(CHAD, 10), oneZoomStep());
+    const remainingAfterFirst = out.remainingSeconds;
     const backIn = run(out, { type: "ZOOM", deltaY: -ZOOM_STEP / ZOOM_SENSITIVITY });
     const outAgain = run(backIn, oneZoomStep());
-    expect(outAgain.remainingSeconds).toBe(out.remainingSeconds);
-    expect(outAgain.scoreEvents.length).toBe(out.scoreEvents.length);
+    expect(outAgain.remainingSeconds).toBe(remainingAfterFirst);
+    expect(outAgain.maxZoomReached).toBe(out.maxZoomReached);
+    expect(outAgain.scoreEvents).toEqual([]);
   });
 
   it("zoom keeps working after the round ends, free of charge", () => {
@@ -179,6 +177,7 @@ describe("selectors", () => {
     expect(neighborCompletion(mid)).toBeCloseTo(45, 5);
 
     const end = run(start, tick(60));
+    expect(end.status).toBe("running"); // soft zero — not failed
     expect(outlineCompletion(end)).toBe(100);
     expect(neighborCompletion(end)).toBe(100);
   });
@@ -205,11 +204,12 @@ describe("selectors", () => {
     expect(neighborCompletion(failed)).toBe(100);
   });
 
-  it("completes both to 100 when a wrong-guess penalty drains the clock", () => {
-    const failed = run(createRound(CHAD, 3, 15), guess("Z")); // -20s tier kills a 15s clock
-    expect(failed.status).toBe("failed");
-    expect(outlineCompletion(failed)).toBe(100);
-    expect(neighborCompletion(failed)).toBe(100);
+  it("completes both to 100 when the pacer hits 0 while still running", () => {
+    const atZero = run(createRound(CHAD, 3), tick(60));
+    expect(atZero.status).toBe("running");
+    expect(atZero.remainingSeconds).toBe(0);
+    expect(outlineCompletion(atZero)).toBe(100);
+    expect(neighborCompletion(atZero)).toBe(100);
   });
 
   it("non-letter characters are always revealed and not letters", () => {

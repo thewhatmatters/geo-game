@@ -86,10 +86,11 @@ run `prd.json` on separate Orca branches; best result promoted to
 
 ## Git state
 
-Branch `ui-updates` @ `f23161e` at handoff time. Committed during
-handoff: label/ring fix + round-2 PRD artifacts + pre-existing
-modifications (ideas.md, src/index.css, PRD.html deletion). No remote
-configured — push impossible until one is added.
+Branch `ui-updates`, synced with `main` — both pushed to
+`origin` = https://github.com/thewhatmatters/geo-game (created
+2026-07-19, first push `c68068a`). Committed during handoff: label/ring
+fix + round-2 PRD artifacts + pre-existing modifications (ideas.md,
+src/index.css, PRD.html deletion).
 
 ## Don't redo
 

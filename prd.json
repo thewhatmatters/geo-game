@@ -54,7 +54,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Lockout UI treatment (pips, 'SYSTEM LOCKOUT IN 5 ATTEMPTS') lands in US-006/US-007; this story is reducer + minimal wiring so the round is playable end-to-end."
     },
     {

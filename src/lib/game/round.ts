@@ -18,12 +18,22 @@ import {
  *
  * The clock is a pure pacer: it counts down at 1s/tick and NOTHING the
  * player does — wrong guesses, correct streaks, zooming out — mutates
- * remainingSeconds. Reaching 0:00 does not end the round (transitional
- * behavior until the lockout mode lands): the round simply continues
- * with the clock parked at 0 and all hints fully drawn.
+ * remainingSeconds. Reaching 0:00 does not end the round: it flips the
+ * round into LOCKOUT mode — guessing stays fully enabled with all hints
+ * drawn, but wrong letters now burn a finite attempt budget, so the soft
+ * zero trades a hard deadline for mounting tension.
  */
 
 export const ROUND_DURATION_SECONDS = 60;
+
+/**
+ * Wrong guesses allowed after the clock hits 0:00 before the round locks
+ * out. Only wrong letters guessed *during* lockout burn budget — anything
+ * spent while the clock was still running is already paid for in score.
+ * The lockout UI treatment (attempt pips, warning banner) lands separately;
+ * this constant is the single source of truth it reads from.
+ */
+export const LOCKOUT_ATTEMPT_BUDGET = 5;
 
 /**
  * Fraction of the clock the target outline takes to fully draw. Neighbor
@@ -32,7 +42,18 @@ export const ROUND_DURATION_SECONDS = 60;
  */
 export const HINT_ONSET_FRACTION = 0.45;
 
-export type RoundStatus = "running" | "solved" | "failed";
+/**
+ * The round's four terminal outcomes plus the live state. `solved` and
+ * `solved_late` both count as solves (see isSolveStatus) and differ only in
+ * whether the clock was still running — only `solved` earns the time bonus.
+ * `locked_out` (lockout budget exhausted) and `gave_up` are failures.
+ */
+export type RoundStatus = "running" | "solved" | "solved_late" | "locked_out" | "gave_up";
+
+/** Did this status end the round with the country identified? */
+export function isSolveStatus(status: RoundStatus): boolean {
+  return status === "solved" || status === "solved_late";
+}
 
 export type LetterState = "correct" | "wrong";
 
@@ -81,6 +102,8 @@ export interface RoundState {
   readonly zoomMax: number;
   /** Newest-last — see latestScoreEvent. One entry per scoring guess; the clock never appends. */
   scoreEvents: ScoreEvent[];
+  /** Wrong guesses left before lockout ends the round. Only decremented while inLockout — full budget until the clock hits 0. */
+  lockoutAttemptsRemaining: number;
 }
 
 export type RoundEvent =
@@ -111,10 +134,20 @@ export function createRound(
     maxZoomReached: ZOOM_MIN,
     zoomMax,
     scoreEvents: [],
+    lockoutAttemptsRemaining: LOCKOUT_ATTEMPT_BUDGET,
   };
 }
 
-/** Pure tick decay: clamps at 0 and keeps the round running — 0:00 is not a failure, just the end of the paced phase. */
+/**
+ * Is the round past 0:00 and running on the attempt budget rather than the
+ * clock? Derived, not stored — the clock reaching 0 IS the lockout, so
+ * there's no separate flag to keep in sync.
+ */
+export function inLockout(state: RoundState): boolean {
+  return state.status === "running" && state.remainingSeconds <= 0;
+}
+
+/** Pure tick decay: clamps at 0 and keeps the round running — 0:00 is not a failure, it's the flip into lockout (see inLockout). */
 function tickClock(state: RoundState, seconds: number): RoundState {
   if (state.remainingSeconds <= 0) return state;
   return { ...state, remainingSeconds: Math.max(0, state.remainingSeconds - seconds) };
@@ -147,12 +180,21 @@ function reduceGuess(state: RoundState, rawLetter: string): RoundState {
       multiplier: comboMultiplier(correctStreak),
     });
     const solved = [...required].every((l) => guesses[l] === "correct");
-    if (solved) next = { ...next, status: "solved" };
+    // Beating the clock and beating the lockout are both solves, but only
+    // the former has seconds left to convert into a time bonus.
+    if (solved) next = { ...next, status: inLockout(state) ? "solved_late" : "solved" };
     return next;
   }
 
   const guesses = { ...state.guesses, [letter]: "wrong" as const };
-  return withScoreEvent({ ...state, guesses, correctStreak: 0 }, {
+  // Wrong letters cost score in both phases; in lockout they additionally
+  // burn an attempt, and the last one ends the round.
+  const locked = inLockout(state);
+  const lockoutAttemptsRemaining = locked
+    ? state.lockoutAttemptsRemaining - 1
+    : state.lockoutAttemptsRemaining;
+  const status: RoundStatus = locked && lockoutAttemptsRemaining <= 0 ? "locked_out" : state.status;
+  return withScoreEvent({ ...state, guesses, correctStreak: 0, lockoutAttemptsRemaining, status }, {
     type: "wrong",
     delta: -wrongLetterPenalty(state.uniqueLetterCount),
     multiplier: comboMultiplier(0),
@@ -176,8 +218,10 @@ export function reduceRound(state: RoundState, event: RoundEvent): RoundState {
       return tickClock(state, event.deltaSeconds);
     case "GUESS":
       return reduceGuess(state, event.letter);
+    // Available in both phases — the guard above only blocks it once the
+    // round is already over.
     case "GIVE_UP":
-      return { ...state, status: "failed" };
+      return { ...state, status: "gave_up" };
   }
 }
 

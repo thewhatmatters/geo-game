@@ -4,10 +4,12 @@ import {
   comboMultiplier,
   computeScore,
   correctLetterPoints,
+  timeBonus,
   wrongLetterPenalty,
   COMBO_MULTIPLIER_STEPS,
   CORRECT_LETTER_POINTS,
   SCORE_FLOOR,
+  TIME_BONUS_PER_SECOND,
 } from "./score";
 
 describe("comboMultiplier", () => {
@@ -66,13 +68,42 @@ describe("applyScoreDelta", () => {
   });
 });
 
-describe("computeScore", () => {
-  it("shows the running total while playing and on solve", () => {
-    expect(computeScore("running", 350)).toBe(350);
-    expect(computeScore("solved", 350)).toBe(350);
+describe("timeBonus", () => {
+  it("pays 10/second left, on a clean solve only", () => {
+    expect(timeBonus("solved", 37)).toBe(37 * TIME_BONUS_PER_SECOND);
   });
 
-  it("zeroes a failed round — no reward for not solving", () => {
-    expect(computeScore("failed", 350)).toBe(0);
+  it("pays nothing for a late solve — there are no seconds left to convert", () => {
+    expect(timeBonus("solved_late", 0)).toBe(0);
+    expect(timeBonus("solved_late", 12)).toBe(0); // defensive: solved_late implies 0 anyway
+  });
+
+  it("pays nothing while running or on either failure", () => {
+    expect(timeBonus("running", 37)).toBe(0);
+    expect(timeBonus("locked_out", 0)).toBe(0);
+    expect(timeBonus("gave_up", 37)).toBe(0);
+  });
+
+  it("pays whole seconds only", () => {
+    expect(timeBonus("solved", 36.9)).toBe(36 * TIME_BONUS_PER_SECOND);
+  });
+});
+
+describe("computeScore", () => {
+  it("shows the running total while playing — the bonus lands on solve, not before", () => {
+    expect(computeScore("running", 350, 37)).toBe(350);
+  });
+
+  it("adds the time bonus on a clean solve", () => {
+    expect(computeScore("solved", 350, 37)).toBe(350 + 370);
+  });
+
+  it("keeps a late solve's earned points, without a bonus", () => {
+    expect(computeScore("solved_late", 350, 0)).toBe(350);
+  });
+
+  it("zeroes both failure outcomes — no reward for not solving", () => {
+    expect(computeScore("locked_out", 350, 0)).toBe(0);
+    expect(computeScore("gave_up", 350, 37)).toBe(0);
   });
 });

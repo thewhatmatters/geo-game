@@ -37,6 +37,13 @@ export const WRONG_LETTER_PENALTY_TIERS = [
 /** The running score never goes below this — a bad streak stalls you at 0, it doesn't bury you. */
 export const SCORE_FLOOR = 0;
 
+/**
+ * Points per second left on the clock, awarded on a clean solve only. A
+ * late solve (past 0:00, won on the lockout budget) still counts as a solve
+ * but has no seconds to convert — that's the whole cost of the soft zero.
+ */
+export const TIME_BONUS_PER_SECOND = 10;
+
 /** Multiplier for the Nth consecutive correct letter (N counted inclusive of that letter), capped at the ladder's last step. */
 export function comboMultiplier(correctStreak: number): number {
   if (correctStreak < 1) return COMBO_MULTIPLIER_STEPS[0];
@@ -61,16 +68,31 @@ export function applyScoreDelta(score: number, delta: number): number {
 }
 
 /**
- * What the UI displays. The stored score is already floored at 0; the only
- * extra rule is that a failed/given-up round shows nothing earned — same
- * spirit as the share string keeping the country hidden on failure.
+ * Time bonus for the seconds left on the clock — `solved` only. Whole
+ * seconds: the ticker feeds fractional deltas, and paying for a partial
+ * second would make the same visible clock reading score differently.
  */
-export function computeScore(status: RoundStatus, score: number): number {
-  if (status === "failed") return 0;
-  return score;
+export function timeBonus(status: RoundStatus, remainingSeconds: number): number {
+  if (status !== "solved") return 0;
+  return Math.floor(Math.max(0, remainingSeconds)) * TIME_BONUS_PER_SECOND;
+}
+
+/**
+ * What the UI displays: the event-sourced total (already floored at 0),
+ * plus the time bonus on a clean solve. A failed round — locked out or
+ * given up — shows nothing earned, same spirit as the share string keeping
+ * the country hidden on failure.
+ */
+export function computeScore(
+  status: RoundStatus,
+  score: number,
+  remainingSeconds = 0,
+): number {
+  if (status === "locked_out" || status === "gave_up") return 0;
+  return score + timeBonus(status, remainingSeconds);
 }
 
 /** Convenience overload point for callers holding a whole RoundState. */
 export function roundScore(state: RoundState): number {
-  return computeScore(state.status, state.score);
+  return computeScore(state.status, state.score, state.remainingSeconds);
 }

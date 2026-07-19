@@ -8,14 +8,15 @@ import {
   neighborCompletion,
   latestScoreEvent,
   currentMultiplier,
+  inLockout,
 } from "./round";
 import { computeScore } from "./score";
 import type { DisplayChar, LetterState, RoundStatus, ScoreEvent } from "./round";
 
 // Re-exported so existing consumers keep one import site for the round's
 // public vocabulary.
-export type { DisplayChar, LetterState, ScoreEvent } from "./round";
-export { HINT_ONSET_FRACTION } from "./round";
+export type { DisplayChar, LetterState, RoundStatus, ScoreEvent } from "./round";
+export { HINT_ONSET_FRACTION, LOCKOUT_ATTEMPT_BUDGET, isSolveStatus } from "./round";
 
 /** How often the real-time ticker samples the wall clock. The reducer receives the measured delta, so a late tick loses no time. */
 const TICK_INTERVAL_MS = 200;
@@ -37,8 +38,12 @@ export interface GameRound {
   giveUp: () => void;
   /** The most recent score event, or null before any has happened — see ScoreEvent. */
   scoreEvent: ScoreEvent | null;
-  /** Display score: the event-sourced running total, zeroed on a failed round. */
+  /** Display score: the event-sourced running total plus the clean-solve time bonus, zeroed on a failed round. */
   score: number;
+  /** True once the clock has hit 0:00 and the round is running on the attempt budget instead. */
+  inLockout: boolean;
+  /** Wrong guesses left before lockout ends the round (full budget until 0:00). */
+  lockoutAttemptsRemaining: number;
   /** The combo multiplier the next correct letter would earn. */
   multiplier: number;
 }
@@ -84,7 +89,9 @@ export function useGameRound(target: Country, zoomMax: number): GameRound {
     guessLetter,
     giveUp,
     scoreEvent: latestScoreEvent(state),
-    score: computeScore(state.status, state.score),
+    score: computeScore(state.status, state.score, state.remainingSeconds),
+    inLockout: inLockout(state),
+    lockoutAttemptsRemaining: state.lockoutAttemptsRemaining,
     multiplier: currentMultiplier(state),
   };
 }

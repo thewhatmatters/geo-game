@@ -7,9 +7,13 @@ import {
   neighborCompletion,
   latestScoreEvent,
   currentMultiplier,
+  inLockout,
+  isSolveStatus,
   ROUND_DURATION_SECONDS,
+  LOCKOUT_ATTEMPT_BUDGET,
 } from "./round";
 import type { RoundEvent, RoundState } from "./round";
+import { roundScore, timeBonus, TIME_BONUS_PER_SECOND } from "./score";
 import { ZOOM_SENSITIVITY, ZOOM_STEP } from "./zoom";
 
 /** "Chad": 4 unique letters — the old harshest penalty tier. */
@@ -53,22 +57,22 @@ describe("clock rules (pure pacer — ported from GameClock)", () => {
     expect(run(zero, tick(5))).toBe(zero);
   });
 
-  it("guessing still works after the clock reaches 0 (transitional: round simply continues)", () => {
+  it("guessing still works after the clock reaches 0 (the round continues in lockout)", () => {
     const state = run(createRound(PERU, 3), tick(60), guess("P"));
     expect(state.status).toBe("running");
     expect(state.guesses).toEqual({ P: "correct" });
     expect(state.remainingSeconds).toBe(0);
   });
 
-  it("give-up transitions to failed immediately regardless of remaining time", () => {
+  it("give-up transitions to gave_up immediately regardless of remaining time", () => {
     const state = run(createRound(CHAD, 3), { type: "GIVE_UP" });
-    expect(state.status).toBe("failed");
+    expect(state.status).toBe("gave_up");
     expect(state.remainingSeconds).toBe(60);
   });
 
-  it("ignores further ticks and guesses once failed", () => {
+  it("ignores further ticks and guesses once given up", () => {
     const state = run(createRound(CHAD, 3), { type: "GIVE_UP" }, tick(5), guess("X"));
-    expect(state.status).toBe("failed");
+    expect(state.status).toBe("gave_up");
     expect(state.remainingSeconds).toBe(60);
     expect(state.guesses).toEqual({});
   });
@@ -224,6 +228,126 @@ describe("score economy (event-sourced, never a function of the clock)", () => {
   });
 });
 
+describe("lockout mode (the soft zero)", () => {
+  /** Runs the clock out so the round is in lockout with a full budget. */
+  const atZero = (target = PERU) => run(createRound(target, 3), tick(60));
+
+  it("0:00 flips the round into lockout without ending it, budget untouched", () => {
+    const zero = atZero();
+    expect(zero.status).toBe("running");
+    expect(inLockout(zero)).toBe(true);
+    expect(zero.lockoutAttemptsRemaining).toBe(LOCKOUT_ATTEMPT_BUDGET);
+  });
+
+  it("wrong guesses before 0:00 never touch the budget", () => {
+    const state = run(createRound(PERU, 3), guess("Z"), guess("Q"), guess("X"));
+    expect(inLockout(state)).toBe(false);
+    expect(state.lockoutAttemptsRemaining).toBe(LOCKOUT_ATTEMPT_BUDGET);
+    expect(state.status).toBe("running");
+  });
+
+  it("each wrong letter in lockout burns exactly one attempt", () => {
+    let state = atZero();
+    for (let spent = 1; spent < LOCKOUT_ATTEMPT_BUDGET; spent += 1) {
+      state = run(state, guess(String.fromCharCode(70 + spent))); // G, H, I, ... — none in "Peru"
+      expect(state.lockoutAttemptsRemaining).toBe(LOCKOUT_ATTEMPT_BUDGET - spent);
+      expect(state.status).toBe("running");
+    }
+  });
+
+  it("correct letters in lockout cost nothing from the budget", () => {
+    const state = run(atZero(), guess("P"), guess("E"));
+    expect(state.lockoutAttemptsRemaining).toBe(LOCKOUT_ATTEMPT_BUDGET);
+    expect(state.status).toBe("running");
+  });
+
+  it("locks out on the wrong guess that exhausts the budget", () => {
+    const wrong = ["G", "H", "I", "J", "K"].map(guess);
+    expect(wrong.length).toBe(LOCKOUT_ATTEMPT_BUDGET);
+    const state = run(atZero(), ...wrong);
+    expect(state.status).toBe("locked_out");
+    expect(state.lockoutAttemptsRemaining).toBe(0);
+    expect(inLockout(state)).toBe(false); // the round is over, not paused at 0
+  });
+
+  it("ignores further guesses once locked out", () => {
+    const out = run(atZero(), guess("G"), guess("H"), guess("I"), guess("J"), guess("K"));
+    expect(run(out, guess("P"), tick(1))).toBe(out);
+  });
+
+  it("give-up in lockout still produces gave_up, not locked_out", () => {
+    const state = run(atZero(), guess("G"), { type: "GIVE_UP" });
+    expect(state.status).toBe("gave_up");
+    expect(state.lockoutAttemptsRemaining).toBe(LOCKOUT_ATTEMPT_BUDGET - 1);
+  });
+
+  it("solving in lockout is a solve — solved_late, on whatever budget is left", () => {
+    const state = run(atZero(), guess("G"), guess("P"), guess("E"), guess("R"), guess("U"));
+    expect(state.status).toBe("solved_late");
+    expect(isSolveStatus(state.status)).toBe(true);
+    expect(state.lockoutAttemptsRemaining).toBe(LOCKOUT_ATTEMPT_BUDGET - 1);
+  });
+
+  it("solving with the clock still running is a clean solve", () => {
+    const state = run(createRound(PERU, 3), tick(59), guess("P"), guess("E"), guess("R"), guess("U"));
+    expect(state.status).toBe("solved");
+    expect(isSolveStatus(state.status)).toBe(true);
+  });
+});
+
+describe("outcome scoring (time bonus, failure zeroing)", () => {
+  const solveEarly = (elapsed: number) =>
+    run(createRound(PERU, 3), tick(elapsed), guess("P"), guess("E"), guess("R"), guess("U"));
+
+  /** Peru solved with no wrong guesses: 100 + 150 + 200 + 200. */
+  const EARNED = 650;
+
+  it("adds remainingSeconds x 10 on a clean solve", () => {
+    const state = solveEarly(23); // 37 seconds left
+    expect(state.remainingSeconds).toBe(37);
+    expect(timeBonus(state.status, state.remainingSeconds)).toBe(37 * TIME_BONUS_PER_SECOND);
+    expect(roundScore(state)).toBe(EARNED + 370);
+  });
+
+  it("pays whole seconds only — a fractional clock never rounds up the bonus", () => {
+    const state = solveEarly(23.4); // 36.6 left
+    expect(roundScore(state)).toBe(EARNED + 36 * TIME_BONUS_PER_SECOND);
+  });
+
+  it("gives a late solve its earned points but no time bonus", () => {
+    const state = run(createRound(PERU, 3), tick(60), guess("P"), guess("E"), guess("R"), guess("U"));
+    expect(state.status).toBe("solved_late");
+    expect(timeBonus(state.status, state.remainingSeconds)).toBe(0);
+    expect(roundScore(state)).toBe(EARNED);
+  });
+
+  it("zeroes a locked-out round even though letters were earned", () => {
+    const state = run(atZeroWith(PERU), guess("P"), guess("G"), guess("H"), guess("I"), guess("J"), guess("K"));
+    expect(state.status).toBe("locked_out");
+    expect(state.score).toBeGreaterThanOrEqual(0);
+    expect(roundScore(state)).toBe(0);
+  });
+
+  it("zeroes a given-up round, in either phase", () => {
+    const early = run(createRound(PERU, 3), tick(10), guess("P"), guess("E"), { type: "GIVE_UP" });
+    expect(roundScore(early)).toBe(0);
+
+    const late = run(atZeroWith(PERU), guess("P"), { type: "GIVE_UP" });
+    expect(late.status).toBe("gave_up");
+    expect(roundScore(late)).toBe(0);
+  });
+
+  it("awards no time bonus while the round is still running", () => {
+    const running = run(createRound(PERU, 3), tick(10), guess("P"));
+    expect(roundScore(running)).toBe(100);
+  });
+});
+
+/** Clock run out, full lockout budget. */
+function atZeroWith(target: { name: string; unique_letters: number }): RoundState {
+  return run(createRound(target, 3), tick(60));
+}
+
 describe("zoom movement (no longer an economy)", () => {
   it("crossing a new zoom-out step never costs time", () => {
     const state = run(createRound(CHAD, 10), oneZoomStep());
@@ -303,7 +427,7 @@ describe("selectors", () => {
 
   it("completes both to 100 on give-up, regardless of clock position", () => {
     const failed = run(createRound(CHAD, 3), tick(1), { type: "GIVE_UP" });
-    expect(failed.status).toBe("failed");
+    expect(failed.status).toBe("gave_up");
     expect(failed.remainingSeconds).toBe(59); // clock nowhere near 0
     expect(outlineCompletion(failed)).toBe(100);
     expect(neighborCompletion(failed)).toBe(100);

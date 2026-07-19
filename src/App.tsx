@@ -10,7 +10,7 @@ import { TriviaOverlay } from "./components/TriviaOverlay";
 import { ShareResult } from "./components/ShareResult";
 import { DotMatrixNumber } from "./components/DotMatrixNumber";
 import { getAllCountries } from "./lib/game/dailyCountry";
-import { useGameRound } from "./lib/game/useGameRound";
+import { isSolveStatus, useGameRound } from "./lib/game/useGameRound";
 import type { DisplayChar } from "./lib/game/useGameRound";
 import type { RoundBoot } from "./lib/game/boot";
 import { ZOOM_MIN, ZOOM_SENSITIVITY, ZOOM_STEP, zoomStepsCrossed } from "./lib/game/zoom";
@@ -222,7 +222,8 @@ function App({ boot }: { boot: RoundBoot }) {
   useEffect(() => {
     if (round.status === "running" || recordedRef.current) return;
     recordedRef.current = true;
-    recordOutcome(round.status === "solved" ? "solved" : "failed");
+    // A late solve still counts for the streak — locked_out and gave_up don't.
+    recordOutcome(isSolveStatus(round.status) ? "solved" : "failed");
   }, [round.status, recordOutcome]);
 
   // Fires exactly once per round, only on a genuine solve (not on give-up/
@@ -231,7 +232,7 @@ function App({ boot }: { boot: RoundBoot }) {
   // (e.g. StrictMode's dev double-invoke).
   const confettiFiredRef = useRef(false);
   useEffect(() => {
-    if (round.status !== "solved" || confettiFiredRef.current) return;
+    if (!isSolveStatus(round.status) || confettiFiredRef.current) return;
     confettiFiredRef.current = true;
     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
   }, [round.status]);
@@ -364,7 +365,7 @@ function App({ boot }: { boot: RoundBoot }) {
     if (round.status === "running") return null;
     return generateShareString({
       dayNumber,
-      status: round.status,
+      status: isSolveStatus(round.status) ? "solved" : "failed",
       remainingSeconds: round.remainingSeconds,
       guesses: round.guesses,
       targetName: daily.target.name,
@@ -478,7 +479,7 @@ function App({ boot }: { boot: RoundBoot }) {
                   which is itself centered on the target's own bounding box
                   (see boundsToViewBox), so no separate label-position data
                   is needed. */}
-              {round.status === "solved" && (
+              {isSolveStatus(round.status) && (
                 <text
                   x={zoomOriginX}
                   y={zoomOriginY}
@@ -581,7 +582,7 @@ function App({ boot }: { boot: RoundBoot }) {
           </div>
           {round.status !== "running" && (
             <p className="round-outcome" data-testid="round-outcome">
-              {round.status === "solved" ? "Solved!" : "Failed"}
+              {isSolveStatus(round.status) ? "Solved!" : "Failed"}
             </p>
           )}
           {shareString && <ShareResult shareString={shareString} />}

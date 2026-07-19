@@ -7,6 +7,7 @@ import {
   viewBoxSize,
   viewBoxToBounds,
   clipBounds,
+  visiblePointsBounds,
   type Bounds,
 } from "./pathBounds";
 
@@ -47,10 +48,12 @@ export const SMALL_TARGET_MAX_BOOST = 4;
  * like Wallis and Futuna — two islands ~4 viewport units each, far apart,
  * whose combined bbox IS the frame — renders as pin-sized flecks in a black
  * field; the frame can't be tightened further without cropping one island
- * out. So once targetBoost reaches LOCATOR_RING_MIN_BOOST, the scene also
- * exports one world-space center per landmass (per M...Z subpath of the
- * target's path) for App.tsx to mark with a thin "look here" ring. Normal
- * days (boost below the threshold) get none — zero visual change.
+ * out. So once targetBoost reaches LOCATOR_RING_MIN_BOOST — AND the target
+ * actually has 2+ far-apart landmass clusters — the scene exports one
+ * world-space center per landmass (per M...Z subpath of the target's path)
+ * for App.tsx to mark with a thin "look here" ring. Normal days (boost
+ * below the threshold) and compact single-landmass boosted days
+ * (Luxembourg: the tightened frame already makes the shape huge) get none.
  */
 export const LOCATOR_RING_MIN_BOOST = 2;
 /**
@@ -143,12 +146,15 @@ export interface NeighborSlot {
   /** The country's full true bounding box (can extend far outside the viewBox for a large neighbor). */
   bounds: Bounds;
   /**
-   * `bounds` clipped to the scene's actual viewBox — i.e. only the portion
-   * that's genuinely visible on screen. Centering a label on the raw
-   * `bounds` of a huge neighbor (e.g. Brazil next to Paraguay) can place it
-   * far outside the frame; this is what a label should actually be
-   * positioned against. Null if the neighbor doesn't intersect the viewBox
-   * at all.
+   * Bounding box of the neighbor's in-frame path vertices — i.e. only the
+   * portion that's genuinely visible on screen; this is what a label should
+   * be positioned against. Centering a label on the raw `bounds` of a huge
+   * neighbor (Brazil next to Paraguay) can place it far outside the frame,
+   * and even a bbox-CLIP fails for a neighbor that wraps around the target
+   * (France around Luxembourg): its bbox contains the whole frame, so the
+   * clip degenerates to the frame itself and the label lands dead-center on
+   * the target. Falls back to the bbox clip when no vertex is in frame;
+   * null if the neighbor doesn't intersect the viewBox at all.
    */
   visibleBounds: Bounds | null;
 }
@@ -236,7 +242,9 @@ export function computeGeoScene(
   const neighbors = daily.neighborCodes.map((code) => {
     const country = getCountry(code);
     const bounds = pathBounds(country.path);
-    return { code, country, bounds, visibleBounds: clipBounds(bounds, viewBoxBounds) };
+    const visibleBounds =
+      visiblePointsBounds(country.path, viewBoxBounds) ?? clipBounds(bounds, viewBoxBounds);
+    return { code, country, bounds, visibleBounds };
   });
 
   // Height-fit ceiling: visible world height at zoom z is
@@ -248,10 +256,15 @@ export function computeGeoScene(
   // Antarctica.)
   const maxZoom = Math.max(MIN_MAX_ZOOM, worldExtentY().height / (viewportHeightPx * pxScale));
 
-  const locatorCenters =
+  // Rings only make sense for SCATTERED landmasses (2+ clusters). A
+  // single-cluster boosted target (Luxembourg, Andorra) already fills the
+  // tightened frame — a ring at its center is pure noise sitting exactly
+  // where the target's own reveal label renders.
+  const clusters =
     targetBoost >= LOCATOR_RING_MIN_BOOST
       ? clusterCenters(subpathBounds(daily.target.path), LOCATOR_RING_MERGE_PX * pxScale)
       : [];
+  const locatorCenters = clusters.length >= 2 ? clusters : [];
 
   return { viewBox, pxScale, neighbors, maxZoom, targetBoost, locatorCenters };
 }

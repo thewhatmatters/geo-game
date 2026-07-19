@@ -44,6 +44,38 @@ export function subpathBounds(path: string): Bounds[] {
     .map((segment) => pathBounds(segment));
 }
 
+/**
+ * Bounding box of only those path vertices that actually lie inside
+ * `container` — where the shape is genuinely visible in a frame, as opposed
+ * to clipBounds, which intersects bounding boxes. The distinction matters
+ * for a neighbor that wraps around the target (France around Luxembourg):
+ * its bounding box contains the entire frame, so the box intersection IS
+ * the frame and a label centered on it lands dead-center on the target,
+ * while the in-frame vertices trace only where the shape truly crosses the
+ * view. Null when no vertex falls inside (callers fall back to clipBounds).
+ */
+export function visiblePointsBounds(path: string, container: Bounds): Bounds | null {
+  const numbers = path.match(/-?\d+\.?\d*/g)?.map(Number) ?? [];
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let found = false;
+
+  for (let i = 0; i + 1 < numbers.length; i += 2) {
+    const x = numbers[i];
+    const y = numbers[i + 1];
+    if (x < container.minX || x > container.maxX || y < container.minY || y > container.maxY) continue;
+    found = true;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+
+  return found ? { minX, minY, maxX, maxY } : null;
+}
+
 /** Square SVG viewBox string centered on `bounds`, padded by `marginRatio` on each side relative to the larger dimension. */
 export function boundsToViewBox(bounds: Bounds, marginRatio: number): string {
   const width = bounds.maxX - bounds.minX;

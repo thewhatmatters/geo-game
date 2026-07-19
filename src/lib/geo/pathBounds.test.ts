@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pathBounds, subpathBounds, boundsToViewBox, viewBoxSize } from "./pathBounds";
+import { pathBounds, subpathBounds, boundsToViewBox, viewBoxSize, visiblePointsBounds } from "./pathBounds";
 
 describe("pathBounds", () => {
   it("computes the bounding box of a simple M/L/Z path", () => {
@@ -35,6 +35,28 @@ describe("subpathBounds", () => {
       { minX: -5.5, minY: -10, maxX: 5, maxY: 10 },
       { minX: 20, minY: 20, maxX: 25, maxY: 25 },
     ]);
+  });
+});
+
+describe("visiblePointsBounds", () => {
+  const container = { minX: 0, minY: 0, maxX: 100, maxY: 100 };
+
+  it("bounds only the vertices inside the container, ignoring out-of-frame ones", () => {
+    // A shape mostly outside the frame: only (10,10) and (90,20) are in.
+    const path = "M10,10L90,20L500,20L500,300L10,300Z";
+    expect(visiblePointsBounds(path, container)).toEqual({ minX: 10, minY: 10, maxX: 90, maxY: 20 });
+  });
+
+  it("does NOT degenerate to the container for a shape whose bbox contains it (wrap-around neighbor)", () => {
+    // Ring surrounding the container with one edge dipping inside — the
+    // bbox clip would return the whole container; the vertex bounds trace
+    // just the visible dip.
+    const path = "M-50,-50L150,-50L150,150L50,80L-50,150Z";
+    expect(visiblePointsBounds(path, container)).toEqual({ minX: 50, minY: 80, maxX: 50, maxY: 80 });
+  });
+
+  it("returns null when no vertex lies inside the container", () => {
+    expect(visiblePointsBounds("M200,200L300,200L300,300Z", container)).toBeNull();
   });
 });
 

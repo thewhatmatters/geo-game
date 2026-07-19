@@ -110,6 +110,27 @@ describe("computeGeoScene", () => {
     expect(southAfrica.visibleBounds!.minY).toBeGreaterThanOrEqual(vbMinY);
   });
 
+  it("anchors a wrap-around neighbor's visibleBounds on its in-frame geometry, not the degenerate bbox clip (Geo #9 bug)", () => {
+    // France wraps around Luxembourg's south and west, so France's raw
+    // bounding box CONTAINS Luxembourg's entire viewBox — a bbox clip
+    // degenerates to the frame itself, centering the FRANCE label dead-on
+    // the target (right where the target's own reveal label renders).
+    const scene = computeGeoScene({ target: countries["LUX"], neighborCodes: ["FRA"] });
+    const france = scene.neighbors.find((n) => n.code === "FRA")!;
+    const [, vbMinY, vbWidth, vbHeight] = scene.viewBox.split(" ").map(Number);
+
+    // The old bug: visibleBounds === the whole frame.
+    expect(france.visibleBounds).not.toBeNull();
+    const width = france.visibleBounds!.maxX - france.visibleBounds!.minX;
+    const height = france.visibleBounds!.maxY - france.visibleBounds!.minY;
+    expect(width * height).toBeLessThan(vbWidth * vbHeight * 0.9);
+
+    // France is SOUTH of Luxembourg — its label anchor must sit in the
+    // lower half of the frame, not at the frame's center.
+    const centerY = (france.visibleBounds!.minY + france.visibleBounds!.maxY) / 2;
+    expect(centerY).toBeGreaterThan(vbMinY + vbHeight / 2);
+  });
+
   it("returns null visibleBounds for a neighbor that doesn't intersect the viewBox at all", () => {
     // Australia is nowhere near Paraguay in the shared frame — passing it
     // in as if it were a "neighbor" exercises the no-overlap case directly.
@@ -175,6 +196,15 @@ describe("computeGeoScene", () => {
         expect(center.y).toBeGreaterThanOrEqual(targetBounds.minY);
         expect(center.y).toBeLessThanOrEqual(targetBounds.maxY);
       }
+    });
+
+    it("emits no rings for a boosted but compact single-landmass target (Luxembourg)", () => {
+      // Luxembourg is tiny (boost ≥ threshold) but one solid landmass that
+      // fills the tightened frame — a ring at its center is noise sitting
+      // exactly where the target's own reveal label renders.
+      const scene = computeGeoScene({ target: countries["LUX"], neighborCodes: [] });
+      expect(scene.targetBoost).toBeGreaterThanOrEqual(LOCATOR_RING_MIN_BOOST);
+      expect(scene.locatorCenters).toEqual([]);
     });
 
     it("emits no rings at all on non-boosted days (large countries)", () => {

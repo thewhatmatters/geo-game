@@ -1,4 +1,5 @@
 import type { Country } from "./dailyCountry";
+import { ROUND_DURATION_SECONDS, tickClock } from "./clock";
 import { applyZoomDelta, ZOOM_MIN } from "./zoom";
 
 /**
@@ -11,30 +12,7 @@ import { applyZoomDelta, ZOOM_MIN } from "./zoom";
  * this reducer TICK events from a real interval.
  */
 
-export const ROUND_DURATION_SECONDS = 60;
-
-/**
- * Placeholder values pending playtesting (see CLAUDE.md "Open design
- * decisions" — exact tiers/values are explicitly not finalized). Keep as a
- * tunable table, not inline arithmetic, so retuning doesn't touch logic.
- */
-export const PENALTY_TIERS: ReadonlyArray<{
-  maxUniqueLetters: number;
-  penaltySeconds: number;
-}> = [
-  { maxUniqueLetters: 5, penaltySeconds: 20 },
-  { maxUniqueLetters: 9, penaltySeconds: 15 },
-  { maxUniqueLetters: Infinity, penaltySeconds: 10 },
-];
-
-export function getPenaltySeconds(uniqueLetterCount: number): number {
-  const tier = PENALTY_TIERS.find((t) => uniqueLetterCount <= t.maxUniqueLetters);
-  return tier ? tier.penaltySeconds : PENALTY_TIERS[PENALTY_TIERS.length - 1].penaltySeconds;
-}
-
-/** Every this many CONSECUTIVE correct letter guesses (streak reset by any wrong guess) grants a flat time bonus — positive reinforcement to offset the wrong-guess-only penalty design. */
-export const CORRECT_STREAK_BONUS_INTERVAL = 2;
-export const CORRECT_STREAK_BONUS_SECONDS = 2;
+export { ROUND_DURATION_SECONDS } from "./clock";
 
 /**
  * Fraction of the clock the target outline takes to fully draw. Neighbor
@@ -42,9 +20,6 @@ export const CORRECT_STREAK_BONUS_SECONDS = 2;
  * exactly as the clock hits 0 — see the selectors below.
  */
 export const HINT_ONSET_FRACTION = 0.45;
-
-/** How many discrete bonus/penalty events the state retains — the UI only ever shows the latest; the rest exist for tests/debugging. */
-const SCORE_EVENT_LOG_CAP = 8;
 
 export type RoundStatus = "running" | "solved" | "failed";
 
@@ -59,12 +34,8 @@ export interface DisplayChar {
 }
 
 /**
- * One discrete time-economy event (a bonus or a penalty) for the UI to
- * surface as a transient "+20"/"-150" popup next to the score — deliberately
- * NOT emitted for ordinary per-tick decay, only for the flat one-time
- * adjustments (streak bonus, wrong guess, zoom-out). `id` is a monotonic
- * counter so the UI can key a fresh animation off it even if the same
- * secondsDelta repeats back to back.
+ * Transitional event shape retained for the score-economy follow-up. The
+ * pure pacer emits no events because player actions never alter time.
  */
 export interface ScoreEvent {
   id: number;
@@ -74,18 +45,18 @@ export interface ScoreEvent {
 export interface RoundState {
   status: RoundStatus;
   remainingSeconds: number;
-  /** A bonus can never push remainingSeconds past where the round started — otherwise a long correct streak could bank unbounded time. */
+  /** Starting duration, used to derive time-based hint progress. */
   readonly initialSeconds: number;
   readonly targetName: string;
   readonly uniqueLetterCount: number;
   guesses: Record<string, LetterState>;
-  /** Consecutive correct guesses, reset by any wrong guess — every CORRECT_STREAK_BONUS_INTERVAL-th one grants a flat time bonus. */
+  /** Consecutive correct guesses, reset by any wrong guess. */
   correctStreak: number;
   zoom: number;
-  /** Furthest zoom-out reached this round — zooming back in and out over already-seen territory never re-charges (see lib/game/zoom.ts). */
+  /** Furthest zoom-out reached this round, used for step-crossing feedback. */
   maxZoomReached: number;
   readonly zoomMax: number;
-  /** Newest-last, capped at SCORE_EVENT_LOG_CAP — see latestScoreEvent. */
+  /** Transitional score-event log; empty until the score economy lands. */
   scoreEvents: ScoreEvent[];
 }
 
@@ -119,23 +90,6 @@ export function createRound(
   };
 }
 
-function pushScoreEvent(state: RoundState, secondsDelta: number): RoundState {
-  const lastId = state.scoreEvents.length ? state.scoreEvents[state.scoreEvents.length - 1].id : 0;
-  const scoreEvents = [...state.scoreEvents, { id: lastId + 1, secondsDelta }].slice(
-    -SCORE_EVENT_LOG_CAP,
-  );
-  return { ...state, scoreEvents };
-}
-
-/** Time deduction with tick semantics: hitting 0 fails the round. Shared by TICK decay, wrong-guess penalties, and zoom-out charges. */
-function deductTime(state: RoundState, seconds: number): RoundState {
-  const remainingSeconds = Math.max(0, state.remainingSeconds - seconds);
-  if (remainingSeconds <= 0) {
-    return { ...state, remainingSeconds: 0, status: "failed" };
-  }
-  return { ...state, remainingSeconds };
-}
-
 function reduceGuess(state: RoundState, rawLetter: string): RoundState {
   const letter = rawLetter.toUpperCase();
   if (!/^[A-Z]$/.test(letter) || state.guesses[letter]) return state;
@@ -147,37 +101,18 @@ function reduceGuess(state: RoundState, rawLetter: string): RoundState {
     const correctStreak = state.correctStreak + 1;
     let next: RoundState = { ...state, guesses, correctStreak };
 
-    if (correctStreak % CORRECT_STREAK_BONUS_INTERVAL === 0) {
-      next = {
-        ...next,
-        remainingSeconds: Math.min(next.initialSeconds, next.remainingSeconds + CORRECT_STREAK_BONUS_SECONDS),
-      };
-      next = pushScoreEvent(next, CORRECT_STREAK_BONUS_SECONDS);
-    }
-
     const solved = [...required].every((l) => guesses[l] === "correct");
     if (solved) next = { ...next, status: "solved" };
     return next;
   }
 
   const guesses = { ...state.guesses, [letter]: "wrong" as const };
-  const penalty = getPenaltySeconds(state.uniqueLetterCount);
-  let next: RoundState = { ...state, guesses, correctStreak: 0 };
-  next = pushScoreEvent(next, -penalty);
-  return deductTime(next, penalty);
+  return { ...state, guesses, correctStreak: 0 };
 }
 
 function reduceZoom(state: RoundState, deltaY: number): RoundState {
   const result = applyZoomDelta(state.zoom, deltaY, state.maxZoomReached, state.zoomMax);
-  let next: RoundState = { ...state, zoom: result.zoom, maxZoomReached: result.maxZoomReached };
-  // Zoom stays available after the round ends so the player can explore the
-  // revealed map — but the time cost only applies while running (there's no
-  // clock left to dock afterwards).
-  if (result.penaltySeconds > 0 && state.status === "running") {
-    next = pushScoreEvent(next, -result.penaltySeconds);
-    next = deductTime(next, result.penaltySeconds);
-  }
-  return next;
+  return { ...state, zoom: result.zoom, maxZoomReached: result.maxZoomReached };
 }
 
 export function reduceRound(state: RoundState, event: RoundEvent): RoundState {
@@ -188,7 +123,7 @@ export function reduceRound(state: RoundState, event: RoundEvent): RoundState {
 
   switch (event.type) {
     case "TICK":
-      return deductTime(state, event.deltaSeconds);
+      return { ...state, remainingSeconds: tickClock(state.remainingSeconds, event.deltaSeconds) };
     case "GUESS":
       return reduceGuess(state, event.letter);
     case "GIVE_UP":

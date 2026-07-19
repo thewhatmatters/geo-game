@@ -1,214 +1,352 @@
 {
-  "project": "Geo — Daily Geography Outline Quiz",
-  "branchName": "loop/geo-daily-quiz",
-  "description": "A daily geography guessing game: Hangman-style letter guessing against a countdown clock, while the target country's outline (and its neighbors') draw themselves in as hints.",
-  "generatedAt": "2026-07-11",
-  "sourcePrd": "PRD.md",
+  "project": "geo",
+  "branchName": "loop/geo-round-2",
+  "description": "Geo Round 2: score economy with clock-as-pacer, hacker-cohesive round UI + end-of-round breakdown, and the retention layer (trophy map, heatmap, streak freezes, local-date rollover, save code)",
+  "generatedAt": "2026-07-19",
+  "sourcePrd": "prd-geo-round-2.md",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Scaffold the Vite + React + TypeScript project",
-      "description": "As a developer, I need a working project skeleton so subsequent stories have somewhere to build.",
+      "title": "Clock becomes a pure pacer (no time mutations)",
+      "description": "As a player, I want the 60-second clock to only pace the round so that penalties and bonuses never steal or add time.",
       "acceptanceCriteria": [
-        "Project created via the Vite react-ts template",
-        "Framer Motion added as a dependency",
-        "Dev server starts and renders a placeholder page with npm run dev",
-        "Typecheck passes",
-        "Verify placeholder page loads in browser using automate-browser skill"
+        "Remove all time-mutating rules from the round: wrong-guess time penalty, correct-streak +2s bonus, and zoom time costs (ZOOM_PENALTY_SECONDS / WORLD_REVEAL_SURCHARGE_SECONDS) no longer change remainingSeconds",
+        "Clock counts 60 -> 0 at 1s/tick regardless of any player action",
+        "Reaching 0:00 no longer ends or fails the round (transitional behavior until US-003: round simply continues; hints are fully drawn at 0)",
+        "RoundCore reducer tests updated to assert time is never mutated by guess or zoom events",
+        "Tests pass",
+        "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Suggested skills: build-ui, automate-browser"
+      "passes": false,
+      "notes": "Foundation for the whole economy. Files: src/lib/game/clock.ts, src/lib/game/round.ts, src/lib/game/zoom.ts. Do not delete old economy tests wholesale - migrate each rule's test to its new score-based counterpart in US-002/US-004."
     },
     {
       "id": "US-002",
-      "title": "Generate country outline + centroid data from world-atlas TopoJSON",
-      "description": "As a developer, I need per-country SVG outline paths and centroid coordinates so the game can render and position any country.",
+      "title": "Event-sourced score with combo multiplier in RoundCore",
+      "description": "As a player, I want letters to earn and cost points with a visible combo so that the score reflects how I'm playing, not just the clock.",
       "acceptanceCriteria": [
-        "Build-time script loads world-atlas TopoJSON at 50m resolution",
-        "Script converts each country's geometry to an SVG path string using an equal-area or equirectangular projection (not Mercator)",
-        "Script computes each country's centroid as { lat, lng }",
-        "Output written to src/data/countries-geo.json, keyed by ISO 3166-1 alpha-2 or alpha-3 code (pick one and use it consistently across all later stories)",
-        "Disputed territories are included/excluded/labeled exactly as world-atlas's Natural Earth source provides them, with no manual overrides",
+        "Correct letter awards +100 x combo multiplier; combo steps x1 -> x1.5 -> x2 (capped at x2) with each consecutive correct letter",
+        "Wrong letter resets combo to x1 and deducts points scaled by the target's unique-letter count: <=5 unique -> -200, 6-9 -> -150, 10+ -> -100",
+        "All values are exported named constants in one module (tunable)",
+        "Score floor is 0 (never displays negative)",
+        "RoundCore emits a score-event record per event (type, delta, resulting multiplier) consumable by the UI",
+        "Reducer unit tests cover: combo build, combo cap, combo reset, each wrong-letter tier, score floor",
+        "Tests pass",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "Replaces score-as-f(clock) in src/lib/game/score.ts. RoundCore (src/lib/game/round.ts) is a pure reducer - keep it that way."
     },
     {
       "id": "US-003",
-      "title": "Merge neighbor adjacency, unique-letter count, and island flag into country data",
-      "description": "As a developer, I need each country's neighbor list and name-difficulty metadata so daily selection and gameplay logic have what they need.",
+      "title": "Soft zero: lockout mode, outcome tiers, time bonus",
+      "description": "As a player, I want to keep solving after 0:00 with limited attempts so that running out of time creates tension instead of instant failure.",
       "acceptanceCriteria": [
-        "Script fetches or uses a local snapshot of restcountries.com's `borders` field to attach neighbor_codes: string[] per country (same ISO code scheme as US-002)",
-        "Script computes unique_letters: number from each country's name (case-insensitive, letters only)",
-        "Script computes is_island: boolean as (neighbor_codes.length === 0)",
-        "Merged output written to src/data/countries.json combining this with US-002's outline/centroid data",
+        "At 0:00 the round enters lockout mode: guessing stays enabled, 5-attempt wrong-guess budget (exported constant), each wrong letter burns one",
+        "Round outcomes are exactly: solved (before 0:00), solved_late (after 0:00), locked_out (budget exhausted), gave_up",
+        "Time bonus = remainingSeconds x 10 awarded only on 'solved' (0 remaining or late solve -> no time bonus)",
+        "solved and solved_late both count as solves; locked_out and gave_up yield final score 0",
+        "Give up button produces gave_up in both phases",
+        "Reducer tests cover: transition into lockout, budget decrement, locked_out at 0 budget, solved_late scoring without time bonus, gave_up zeroing",
+        "Tests pass",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "restcountries.com is fully deprecated (confirmed by US-002); used the `world-countries` npm package as a local static snapshot of the same `borders` data instead. Special-cased Kosovo's code mismatch (world-countries uses 'UNK', US-002's geo data uses the slug 'KOSOVO' since it has no ISO numeric id) and dropped one documented restcountries data quirk (Sri Lanka listed as bordering India via the long-submerged Adam's Bridge) since CLAUDE.md explicitly names Sri Lanka as a 0-land-neighbor island example. Border references to non-sovereign territories absent from world-atlas's topology (Gibraltar, French Guiana, etc.) are dropped rather than pointing at countries with no outline data."
+      "passes": false,
+      "notes": "Lockout UI treatment (pips, 'SYSTEM LOCKOUT IN 5 ATTEMPTS') lands in US-006/US-007; this story is reducer + minimal wiring so the round is playable end-to-end."
     },
     {
       "id": "US-004",
-      "title": "Implement deterministic daily-country and neighbor-subset selection",
-      "description": "As a player, I want the same target country as every other player today, so the shareable result is comparable.",
+      "title": "Zoom penalties move to score: -10/step, -100 cap, pay-once",
+      "description": "As a player, I want zooming out to cost a bounded number of points so that exploring the map is a priced hint, never a round-ender.",
       "acceptanceCriteria": [
-        "src/lib/game/dailyCountry.ts exports a function taking a UTC date and returning today's target country via a deterministic hash: hash(UTC date) mod country_count",
-        "The same hash-based approach selects up to 3 neighbors when a country has more than 3 (documented explicitly in code comments as the chosen tie-breaking rule, since the PRD leaves the exact selection algorithm unspecified beyond 'deterministic, seeded like the daily country')",
-        "Countries with 0 neighbors (is_island) return an empty neighbor list without error",
-        "Given the same date input, the function returns identical output on every call (unit test verifies this)",
+        "Each newly-crossed zoom-out step deducts 10 points; total zoom deductions hard-capped at 100 per round (both exported constants)",
+        "Pay-once: re-crossing an already-paid step never re-charges; zooming back in never refunds",
+        "Reaching max zoom (world reveal) charges no time and nothing beyond the -100 cap",
+        "Zoom remains free after the round ends (any outcome)",
+        "Zoom score events flow through the US-002 event record for UI popups",
+        "Tests cover: step charge, cap enforcement, pay-once on re-cross, post-round free zoom",
         "Tests pass",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Ambiguity flagged: PRD does not specify HOW to pick which 3 neighbors when a country has more than 3 (e.g. largest shared border vs. alphabetical vs. hashed order). This story picks and documents the hashed-order approach for consistency with daily-country selection — revisit if a different rule is wanted later."
+      "passes": false,
+      "notes": "src/lib/game/zoom.ts keeps step detection; the charge becomes a RoundCore score event. Deletes the 'zoom out to death' failure mode by construction."
     },
     {
       "id": "US-005",
-      "title": "Build the target-country outline draw-on animation component",
-      "description": "As a player, I want to see the target country's outline draw itself in, so the drawing acts as a visual hint and implicit timer.",
+      "title": "Live score readout with multiplier and event popups",
+      "description": "As a player, I want to see my score, combo multiplier, and each +/- event as it happens so that I stay engaged while solving.",
       "acceptanceCriteria": [
-        "A CountryOutline component accepts a country's SVG path and a completion percentage (0-100) prop",
-        "The component animates stroke reveal via Framer Motion's pathLength/pathSpacing props, not manual getTotalLength()",
-        "Rendering today's target country (from US-004) at various completion percentages visibly changes how much of the outline is drawn",
-        "Typecheck passes",
-        "Verify in browser using automate-browser skill"
+        "Score readout shows running score and current combo multiplier (multiplier visually distinct when above x1)",
+        "Each score event (letter gain, wrong-letter loss, zoom cost, time bonus) fires a transient popup (+200 / -150 style) near the readout; no popup for ordinary ticks",
+        "Popups animate in/out within ~1.5s and never stack illegibly (concurrent events queue or offset)",
+        "Green for positive events, red permitted for negative events, monochrome otherwise (theme guardrails)",
+        "Verify in browser using automate-browser skill (screenshot: readout at x2 combo with a visible popup, via dev server ?date= override)",
+        "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Suggested skills: automate-browser, build-ui"
+      "passes": false,
+      "notes": "Suggested skills: automate-browser, add-motion, build-ui. Replaces the static top-right score. Placement may be refined again by US-006 (hierarchy) - keep the component self-contained."
     },
     {
       "id": "US-006",
-      "title": "Build the countdown clock and unique-letter-scaled penalty state machine",
-      "description": "As a player, I want wrong guesses to cost me time proportional to the puzzle's real difficulty, so easy names aren't trivially free.",
+      "title": "Round-surface hierarchy rework",
+      "description": "As a player, I want the score and question to be the loudest elements after the map so that my attention lands where the game is.",
       "acceptanceCriteria": [
-        "src/lib/game/clock.ts implements a 60-second countdown, ticking down in real time",
-        "A wrong-letter-guess event subtracts time per a configurable penalty-tier table (exported as a named constant, not hardcoded inline): illustrative starting values are <=5 unique letters -> 20s, 6-9 -> 15s, 10+ -> 10s, clearly commented as placeholder values pending playtesting",
-        "Clock reaching 0 transitions state to 'failed'",
-        "An explicit stop/give-up call also transitions state to 'failed' immediately",
-        "Tests pass",
+        "Score readout and question have greater visual prominence (size/position/contrast) than zoom controls; zoom controls recede (smaller/lower-contrast) but stay usable",
+        "Question and answer slots sit in a deliberate relationship with the keyboard (no orphaned question floating between unrelated elements)",
+        "Lockout mode surfaces the 5-attempt pips with the label 'SYSTEM LOCKOUT IN 5 ATTEMPTS' (or agent-refined intrusion-log phrasing) when the clock hits 0:00",
+        "The 'Geo #N - Solved/Failed' outcome strip and the floating Copy button are REMOVED from the round surface (they return inside the end screen, US-012/US-013)",
+        "Minimal monochrome identity preserved: black field, Geist Mono, dot-matrix clock untouched",
+        "No horizontal overflow at 390x844 (use per-element getBoundingClientRect, not body.scrollWidth)",
+        "Verify in browser using automate-browser skill (screenshots: desktop 1280px and mobile 390px, mid-round and lockout mode)",
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Ambiguity flagged: exact penalty values are explicitly TBD in the PRD (needs playtesting) — implement as an easily-tunable config table, not as a design decision this story finalizes."
+      "passes": false,
+      "notes": "Suggested skills: automate-browser, build-ui, audit-ui. Theme guardrails in prd-geo-round-2.md 'Solution > M2' are binding: no green-rain, no CRT/scanline filters, single green accent."
     },
     {
       "id": "US-007",
-      "title": "Build the Hangman letter-guess UI and wire it to the clock and outline",
-      "description": "As a player, I want to guess letters on-screen or via my keyboard and see immediate feedback, so I can solve the puzzle.",
+      "title": "Guess-feedback animations (letter placement + reject)",
+      "description": "As a player, I want letters to land in their slots with a satisfying motion and wrong guesses to visibly reject so that each guess feels like an event.",
       "acceptanceCriteria": [
-        "An on-screen A-Z keyboard component is the visual source of truth, showing per-letter state: unguessed / correct / wrong",
-        "A global keydown listener for a-z dispatches to the same guess-submission handler as clicking an on-screen key",
-        "A correct guess fills every instance of that letter in the target name's blanks at once",
-        "A wrong guess triggers the penalty from US-006's clock and updates the on-screen key to the 'wrong' state",
-        "A visible 'give up' button ends the round as 'failed' immediately",
-        "Filling in the complete target name transitions round state to 'solved'",
-        "The target outline's draw completion (US-005) is driven by elapsed time on the clock (US-006), covering the first ~40-50% of the 60s budget",
-        "Typecheck passes",
-        "Verify in browser using automate-browser skill"
+        "Correct letters animate into their answer slots (slide/decode-style, consistent with the scramble language already used by neighbor labels)",
+        "Wrong guesses produce a visible reject animation (e.g. shake/flash on the guessed key or slot row) distinct from the correct animation",
+        "Multi-slot letters (e.g. two E's) animate all their slots",
+        "Animations respect prefers-reduced-motion (reduced or disabled)",
+        "Physical keyboard and on-screen keyboard trigger identical feedback",
+        "Verify in browser using automate-browser skill (correct guess and wrong guess captured)",
+        "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Suggested skills: automate-browser, build-ui"
+      "passes": false,
+      "notes": "Suggested skills: add-motion, automate-browser. Framer Motion already in the stack - prefer it before adding any animation dependency."
     },
     {
       "id": "US-008",
-      "title": "Render neighbor country outlines at compass-accurate positions with staggered onset",
-      "description": "As a player, I want to see up to 3 neighboring countries appear in their real-world direction once I've used enough time, so I get a spatial hint layer.",
+      "title": "Retune mouse-wheel zoom responsiveness",
+      "description": "As a player, I want scroll-wheel zoom to feel responsive so that exploring the map isn't sluggish.",
       "acceptanceCriteria": [
-        "Neighbor outlines (reusing the CountryOutline component from US-005) remain hidden while time remaining is above the ~40-50% staggered-onset threshold",
-        "Once time remaining drops below that threshold, each of today's up-to-3 neighbor countries (from US-004) begins drawing in",
-        "Each neighbor is positioned at the nearest of a fixed 8-point compass anchor (N, NE, E, SE, S, SW, W, NW) around the target, computed from the neighbor's centroid relative to the target's centroid",
-        "When two neighbors round to the same compass anchor, the second is offset to an adjacent unused anchor rather than overlapping the first",
-        "Countries with fewer than 3 neighbors (including 0, for islands) simply show fewer neighbor slots, with no error or placeholder box",
-        "Typecheck passes",
-        "Verify in browser using automate-browser skill"
+        "Wheel delta -> zoom change mapping retuned so a normal wheel/trackpad gesture produces a clearly visible zoom change (document the old vs new mapping constant in the diff)",
+        "Pinch/trackpad zoom and +/- buttons remain functional and proportionate",
+        "Zoom step-crossing detection (US-004 charges) still fires exactly once per step at the new sensitivity (test or manual verification note)",
+        "Verify in browser using automate-browser skill",
+        "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "Ambiguity flagged: PRD specifies 'nearest anchor point' without naming a specific anchor count or collision rule. This story commits to an 8-point compass with adjacent-anchor offsetting on collision — reasonable default, but revisit if it looks wrong once real neighbor geometry is on screen. Suggested skills: automate-browser, build-ui"
+      "passes": false,
+      "notes": "Suggested skills: automate-browser. Pure tuning story - no design decisions."
     },
     {
       "id": "US-009",
-      "title": "Reveal neighbor name labels letter-by-letter in randomized order",
-      "description": "As a player, I want each visible neighbor's name to slowly spell itself out in a non-obvious order, so it functions as an escalating (not instant) hint.",
+      "title": "Ocean hatch: subtle flow + zoom-dependent density",
+      "description": "As a player, I want the ocean to read as water so that the world map feels alive without stealing attention.",
       "acceptanceCriteria": [
-        "Each neighbor slot shows a redacted name label (blanks) as soon as its outline begins appearing (per US-008)",
-        "Letters of each neighbor's name reveal automatically over time in a randomized (not left-to-right) order — this is not player-guessed input",
-        "The reveal order is randomized once per round per neighbor, not re-randomized on every re-render",
-        "By the time the clock reaches 0, each visible neighbor's full name is revealed",
-        "Typecheck passes",
-        "Verify in browser using automate-browser skill"
+        "Diagonal hatch identity preserved (no texture/image replacement)",
+        "Hatch has a subtle continuous motion (drift/shimmer); subtle means the target outline remains the dominant moving element (agent judgment, screenshot-defended)",
+        "Hatch density/opacity scales with zoom so slight zoom-out no longer reads as overwhelming line noise (compare screenshots at default zoom, ~2 steps out, and full world)",
+        "Animation respects prefers-reduced-motion (static fallback)",
+        "No visible frame drops while the outline draw-in runs concurrently (note findings; WorldMapLayer is unmemoized and 3x-tiled - do not regress the wrap)",
+        "Verify in browser using automate-browser skill (three zoom-level screenshots)",
+        "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "Suggested skills: automate-browser"
+      "passes": false,
+      "notes": "Suggested skills: add-motion, automate-browser. Perf caution: prefer CSS/SVG pattern animation over per-frame React re-render."
     },
     {
       "id": "US-010",
-      "title": "Display the trivia fact overlay on the target country's outline",
-      "description": "As a player, I want to see an interesting fact about the target country while its outline draws, so the wait has some content beyond the animation.",
+      "title": "fun_fact field in the country dataset",
+      "description": "As a player, I want each country to have a lighter fun fact alongside the educational question so that the round has a moment of delight.",
       "acceptanceCriteria": [
-        "A text overlay renders on top of the target CountryOutline, showing the target country's trivia_fact string",
-        "Component reads from src/data/trivia.json, keyed by the same ISO code as countries.json",
-        "If no fact exists yet for a country (expected for most countries until US-013 lands), the overlay is hidden rather than showing blank/undefined text",
-        "Typecheck passes",
-        "Verify in browser using automate-browser skill"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": "Deliberately decoupled from trivia content generation (US-013) — ships against a stub/partial src/data/trivia.json so UI work isn't blocked on content authoring. Suggested skills: automate-browser"
-    },
-    {
-      "id": "US-011",
-      "title": "Persist streak state to localStorage",
-      "description": "As a player, I want my consecutive-day streak remembered between visits, so the daily-ritual hook actually works.",
-      "acceptanceCriteria": [
-        "src/lib/streak/index.ts reads/writes { current_streak, longest_streak, last_played_date } to localStorage",
-        "On round outcome 'solved', current_streak increments if last_played_date was yesterday (UTC), resets to 1 otherwise; longest_streak updates if exceeded",
-        "On round outcome 'failed' (timeout or give-up), current_streak resets to 0",
-        "Streak value is read on app load and reflects the persisted state without requiring a fresh guess",
+        "Country dataset schema gains fun_fact: string; generation/merge scripts (scripts/generate-countries-geo.mjs / merge-country-metadata.mjs) carry it through",
+        "All countries in the shipped dataset have a non-empty fun_fact (LLM-generated, one or two sentences, surprising/light tone - e.g. 'This country has the largest population without a single McDonald's')",
+        "Facts must not contain the country's name or demonym (spoiler guard - enforce with a script check in the generation pipeline)",
+        "A review manifest (e.g. facts flagged needs-review: true until human-reviewed) exists so the human pass is trackable",
+        "npm run gen:countries pipeline runs clean",
         "Tests pass",
         "Typecheck passes"
       ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Same pipeline + review bar as existing trivia. Hint-strength grading is an open question in the PRD - the spoiler guard (no name/demonym) is the enforceable floor."
+    },
+    {
+      "id": "US-011",
+      "title": "Fun-fact line beneath the trivia question",
+      "description": "As a player, I want to see the fun fact under the question so that every round teaches me something delightful.",
+      "acceptanceCriteria": [
+        "fun_fact renders beneath the trivia question, visually subordinate (smaller/dimmer)",
+        "Visible for the whole round and after round end (same lifetime as the trivia question)",
+        "Missing/empty fun_fact renders nothing (no empty container)",
+        "Verify in browser using automate-browser skill",
+        "Typecheck passes"
+      ],
       "priority": 11,
-      "passes": true,
-      "notes": "Supabase is explicitly out of scope for this story and for v1 generally — localStorage only."
+      "passes": false,
+      "notes": "Suggested skills: automate-browser. PRD open question: reveal timing (start vs mid-round) - shipping start-visible as the default; make the reveal timing trivially changeable (single constant/prop)."
     },
     {
       "id": "US-012",
-      "title": "Generate and display the spoiler-safe shareable result string",
-      "description": "As a player, I want to copy a compact result summary that doesn't spoil the answer for people who haven't solved it yet.",
+      "title": "End screen Act 1: itemized score breakdown",
+      "description": "As a player, I want a Street-Fighter-style score recap when the round ends so that my result tells a story.",
       "acceptanceCriteria": [
-        "On round end, a share string is generated containing: a day number, the outcome (time remaining if solved, or 'failed'), and a colored guess-pattern row (correct vs. wrong letter guesses, no letters shown)",
-        "The target country's name/flag appears in the share string ONLY when the outcome is 'solved' — a failed round's share string omits the country identity entirely",
-        "A visible 'copy' button copies the exact share string to the clipboard",
-        "Typecheck passes",
-        "Verify in browser using automate-browser skill"
+        "On round end (any outcome) a breakdown presents line items sequentially/animated: letters earned (with combo context), mistakes, recon cost (zoom), time bonus, TOTAL",
+        "Line items use intrusion-log vocabulary (e.g. 'TRACE PENALTY', 'SPEED BONUS'); labels are agent-craftable within theme guardrails",
+        "Outcome and day number appear here (e.g. 'GEO #9 - ACCESS GRANTED' / late / locked-out / gave-up variants) - the old outcome strip must already be gone (US-006)",
+        "Line items sum exactly to the final score from RoundCore (assert in a test against a fixed reducer scenario)",
+        "Solved-late shows no time bonus line or an explicit zero line; locked_out/gave_up show TOTAL 0",
+        "Confetti still fires only on genuine solves (solved or solved_late), once",
+        "Verify in browser using automate-browser skill (screenshots: solved and locked_out breakdowns via ?date= override)",
+        "Tests pass",
+        "Typecheck passes"
       ],
       "priority": 12,
-      "passes": true,
-      "notes": "Exact visual format (colors/emoji) is not fully specified in the PRD — chosen format: 'Geo #<day> — Solved with <N>s left' or 'Geo #<day> — Failed', a 🟩/⬛ guess-pattern row in guess order, and the country name as a 3rd line only when solved. Day number counts UTC calendar days since a placeholder LAUNCH_DATE constant (2026-07-11) — update when a real launch date is set."
+      "passes": false,
+      "notes": "Suggested skills: automate-browser, add-motion, polish-copy. The breakdown reads from US-002's score-event records - no re-derivation."
     },
     {
       "id": "US-013",
-      "title": "Author LLM-generated, human-reviewed trivia facts for all countries",
-      "description": "As a player, I want a genuinely interesting, verifiably true fact for whichever country comes up, so the trivia overlay is worth reading.",
+      "title": "End screen Act 2 shell: share, copy, countdown to tomorrow",
+      "description": "As a player, I want the end screen to hand me the share and point me at tomorrow so that finishing today plants the return trip.",
       "acceptanceCriteria": [
-        "src/data/trivia.json contains one trivia_fact string per country present in src/data/countries.json (~190 entries)",
-        "Each fact is LLM-generated in a punchy, specific, surprising tone (matching the reference example: 'This country has enough nuclear fallout shelters to house more than 100% of its population')",
-        "Every generated fact is flagged in the story's notes as PENDING HUMAN REVIEW — this story does not mark itself fully 'passes: true' on generation alone; a human must review for factual accuracy before the data is considered final",
+        "After Act 1, an Act 2 section shows: share text preview, a Copy button, and a live countdown to the next local-midnight round",
+        "Share/copy exists ONLY here (round surface has none)",
+        "Share string covers all four outcomes: day number, result (time-remaining when solved / late / failed), spoiler-free guess-pattern row; country name+flag included only for solved and solved_late",
+        "Copy button writes the exact share string to the clipboard (verify via clipboard read in browser automation)",
+        "Current streak count displays (freeze/heatmap/map arrive in later stories - layout leaves room)",
+        "Verify in browser using automate-browser skill",
+        "Tests pass (share-string generation for all four outcomes)",
         "Typecheck passes"
       ],
       "priority": 13,
-      "passes": true,
-      "notes": "HUMAN-REVIEWED, PASSING. All 240 entries in src/data/trivia.json were fact-checked (agent-assisted first pass flagging 20 entries as likely-wrong, outdated, or unverifiably-precise, followed by human sign-off on the corrections). Corrected: JPN (outdated island count, pre-2023 recount), ROU (Vlad the Impaler's actual dynasty/rule), ZWE (incoherent 'outside Egypt' qualifier), TON (overstated 'continuous monarchy' claim), EGY, CAN, GRC, NGA, SVK, SRB, COM, ATG, DMA, BGD, IDN, PHL, AFG, DEU, ABW, TKM (unverifiable superlatives/statistics replaced with sourced or honestly-hedged framing). Typecheck and full test suite (54/54) pass after the edit. Human sign-off recorded 2026-07-11."
+      "passes": false,
+      "notes": "Suggested skills: automate-browser, polish-copy. Extends src/lib/share/. Lockout-mode outcome representation in the pattern row is an open question - pick a spoiler-safe encoding and document it in the diff."
+    },
+    {
+      "id": "US-014",
+      "title": "Local-date rollover: clean flip from UTC",
+      "description": "As a player, I want the new country to arrive at my local midnight so that the daily ritual fits my day.",
+      "acceptanceCriteria": [
+        "Daily hash input becomes the device's local calendar date string (via the boot seam - src/lib/game/boot.ts); ?date= dev override still works",
+        "Day number = days since a fixed epoch of the LOCAL date, with the epoch chosen so today's number continues the current public sequence (document the chosen epoch in the diff)",
+        "Idempotent by date: a local date with a recorded result always shows that result (no replay); a date change while the app is open picks up the new day on next boot/visibility change",
+        "No UTC migration shim (accepted one-time discontinuity)",
+        "Tests: same local date -> same country; consecutive dates -> generally different countries; epoch math; ?date= override precedence",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "src/lib/game/dailyCountry.ts + boot.ts. Everything in M3 keys off local dates - this must land first."
+    },
+    {
+      "id": "US-015",
+      "title": "Outcome ledger + trophy-map records in localStorage",
+      "description": "As a player, I want every day's result and every solved country remembered so that my history can be shown and protected.",
+      "acceptanceCriteria": [
+        "Per-day ledger keyed by local date: { outcome: solved | solved_late | failed, score, target } written at round end (failed = locked_out or gave_up; absent key = missed day)",
+        "Trophy-map record keyed by country code: { tier: in_time | late, date } written ONLY for solves (failures leave no map trace)",
+        "Existing streak read/write (src/lib/streak/) migrates to derive from the ledger (one-time migration of current streak fields; no data loss for current/best)",
+        "Storage schema carries a version field for the save code (US-019) to reference",
+        "Tests: ledger write per outcome, map write only on solves, streak derivation incl. gap = reset, migration from legacy keys",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "Data model in prd-geo-round-2.md is illustrative - final field names are implementer's choice, but versioned. This is the source of truth for heatmap, freezes, map, and save code."
+    },
+    {
+      "id": "US-016",
+      "title": "Streak freezes: earn, bank, auto-apply, kind messaging",
+      "description": "As a player, I want a missed day to be coverable by an earned freeze so that one bad day doesn't erase my streak.",
+      "acceptanceCriteria": [
+        "Earn 1 freeze per 5 consecutive solved days (solved_late counts); bank caps at 2; both exported constants",
+        "On visit after missed day(s): freezes auto-apply chronologically to bridge the gap where possible; applied days recorded as outcome 'frozen' in the ledger",
+        "Explicit message on next visit when a freeze was consumed ('A streak freeze covered <date>' phrasing agent-craftable)",
+        "If the gap exceeds banked freezes: streak resets, and the break message celebrates the ended run's record (never shame framing)",
+        "One-line rule copy visible where freezes are shown (Duolingo copy-explainer win)",
+        "Tests: earn cadence, bank cap, single/multi-day auto-apply, insufficient-freezes reset, frozen ledger entries",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "Suggested skills: polish-copy (messaging). Freeze application is recomputed/applied at boot from the ledger - keep it deterministic so the save code round-trips."
+    },
+    {
+      "id": "US-017",
+      "title": "Contribution heatmap (honest ledger view)",
+      "description": "As a player, I want a GitHub-style calendar of my daily results so that my streak has a visible body.",
+      "acceptanceCriteria": [
+        "Calendar grid of day cells from the ledger: bright green = solved, mid green = solved_late, distinct failed cell, empty = missed, distinct freeze cell",
+        "Failed and frozen cells are distinguishable by shape/glyph, not color alone (colorblind-safe)",
+        "End screen Act 2 embeds a compact recent window (~10-12 weeks); a stats view shows full history",
+        "Today's cell updates immediately at round end",
+        "Cell tooltip/tap shows date + outcome (+ score for solves)",
+        "Verify in browser using automate-browser skill (screenshot with a seeded ledger covering all five cell states)",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "Suggested skills: automate-browser, build-ui. Seed test data through localStorage in the automation script to show all states. Grid aesthetic is deeply on-theme - keep it terminal-clean."
+    },
+    {
+      "id": "US-018",
+      "title": "Trophy world map with tiered fills",
+      "description": "As a player, I want solved countries to fill in on a world map so that a multi-year collection grows out of my daily plays.",
+      "acceptanceCriteria": [
+        "End screen Act 2 renders the world map (existing WorldMapLayer at full zoom-out) with solved countries filled: bright = in_time, dim = late; unsolved/failed countries unfilled",
+        "Today's solve animates its fill when the end screen opens",
+        "Progress counter 'N/190' (or actual dataset count) displays with the map",
+        "Post-round free exploration unaffected",
+        "End screen open causes no visible jank (WorldMapLayer is unmemoized + 3x tiled - memoize or verify; note findings)",
+        "Verify in browser using automate-browser skill (screenshot with seeded map records showing both tiers)",
+        "Typecheck passes"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": "Suggested skills: automate-browser, add-motion. Strongest-evidence retention feature in the research - the fill moment should feel like the day's trophy."
+    },
+    {
+      "id": "US-019",
+      "title": "Save code: export/import full player state",
+      "description": "As a player, I want a copyable code that restores my streak, map, and history so that a browser wipe can't rob me.",
+      "acceptanceCriteria": [
+        "Export produces a versioned string (e.g. v1.<base64url(json)>) encoding ledger, map, streak, and freeze state; import parses, validates version + shape, and restores",
+        "Round-trip test: export -> wipe localStorage -> import -> identical derived state (streak, freezes, map count, heatmap cells)",
+        "Import of a corrupt/unversioned string fails safely with a clear message and touches nothing",
+        "Import merges by taking, per local date, the better outcome when both sides have records (no silent clobber of a longer history)",
+        "Export/import UI lives in the stats area (copy button + paste field)",
+        "Verify in browser using automate-browser skill",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": "Suggested skills: automate-browser. This codec becomes the future Supabase sync payload - keep it a pure src/lib/save/ module with no DOM dependencies."
+    },
+    {
+      "id": "US-020",
+      "title": "Full-flow QA sweep across all four outcomes",
+      "description": "As the maintainer, I want the complete round-to-return loop verified end-to-end so that competing implementations can be judged on evidence.",
+      "acceptanceCriteria": [
+        "Scripted browser runs via ?date= override produce screenshot sets for: solved in-time, solved late (past 0:00), locked out, gave up - each covering round surface, lockout mode where applicable, Act 1 breakdown, Act 2",
+        "Desktop (1280px) and mobile (390px) sets; no horizontal overflow at 390px (getBoundingClientRect per element)",
+        "Share string copied and verified for each outcome (country revealed only on solves)",
+        "Multi-day sequence (3+ consecutive ?date= days incl. one deliberate miss with a banked freeze) shows correct streak, freeze consumption, heatmap cells, and map fills",
+        "npm run test -- --run fully green; npm run build succeeds",
+        "All screenshots saved to a review directory and listed in notes for comparison",
+        "Typecheck passes"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": "Suggested skills: automate-browser, audit-ui. Final gate story - this is the evidence package the branch competition is judged on."
     }
   ]
 }

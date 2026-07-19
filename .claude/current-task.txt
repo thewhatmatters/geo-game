@@ -1,1 +1,1 @@
-3D migration shelved; next: SVG depth-cue polish
+Geo round 2: prd.json ready — launch Orca agent competition

@@ -1,102 +1,104 @@
-# Handoff — Geo: Three.js exploration shelved; CLAUDE.md reconciled
+# Handoff — Geo round 2: PRD locked, prd.json ready for competing agents
 
-_Updated 2026-07-14 · session end_
+_Updated 2026-07-19 · session end_
 
 ## Goal
 
-Ongoing playtesting/polish loop toward a shippable v1 (per CLAUDE.md /
-PRD.md). This session had two arcs: (1) reconcile the stale CLAUDE.md
-with what's actually implemented, and (2) research + spike + **decide
-against** a Three.js 2.5D map migration.
+Turn the retention research + a 12-thought design session into an
+executable round-2 plan: score economy with clock-as-pacer, hacker-
+cohesive UI + end-of-round breakdown, retention layer (trophy map,
+heatmap, freezes, local-date rollover, save code). Multiple agents will
+run `prd.json` on separate Orca branches; best result promoted to
+`ui-updates`.
 
 ## Current state
 
-Branch `loop/geo-daily-quiz`, HEAD `b957e23`, **working tree clean**,
-typecheck ✓, 99/99 tests ✓, build ✓. Not pushed anywhere. Dev server
-not running (was killed at session end; `npm run dev` to restart).
-
-Two commits this session:
-
-- `1e2e59c` — CLAUDE.md reconciled with reality: zoom/pan mechanic,
-  live score, correct-streak bonus, dot-matrix clock all documented as
-  locked mechanics; real architecture map + npm commands replace the
-  "nothing scaffolded yet" placeholders; scrollWidth gotcha added;
-  `/curate-knowledge` → `/curate-vault` reference fixed. Also synced
-  HANDOFF.
-- `b957e23` — the shelved Three.js exploration record:
-  `docs/research/research-threejs-migration-geo.md` (+.html, 26
-  sources), `prd-3d-migration.md` (+.html) headed by a **SHELVED**
-  status note, and `ideas.md` gained an "SVG depth-cue polish" section.
-
-## The big decision this session (don't relitigate)
-
-**geo's map stays SVG — the 2.5D Three.js direction was researched,
-spiked end to end, PRD'd, and then deliberately shelved the same day.**
-The user compared the tuned spike against the current game and
-preferred the original. Why (full record in `prd-3d-migration.md`'s
-status note + vault decision
-`projects/geo/decisions/map-stays-svg-3d-shelved.md`):
-
-- Outline fidelity IS the game; the tilted camera foreshortens shapes.
-- The draw-on line doubles as the clock; a rising slab breaks that and
-  leaks the full shape early (hint-economy regression).
-- 3D wow front-loads (first ~10s); mobile perf/battery/bundle/migration
-  costs are permanent.
-
-The spike (`src/spike/`) and deps (`three`, `@react-three/fiber`,
-`@types/three`) were **removed without ever being committed** — do not
-look for them in history; the record is the documentation. The working
-CSS3D-label technique from the spike survives ONLY in the vault
-playbook `web/css3drenderer-perspective-dom-labels.md`.
+- **Wrap-around-neighbor label bug FIXED & verified** (Geo #9 Luxembourg:
+  FRANCE label dead-center): `visiblePointsBounds()` in
+  `src/lib/geo/pathBounds.ts` (in-frame vertex bbox, clip fallback) +
+  locator rings now require 2+ landmass clusters (`scene.ts`). 128/128
+  tests, typecheck, pixel-verified both mid-round and post-round via
+  Playwright screenshots on `?date=2026-07-19`.
+- **`prd-geo-round-2.md` + `.html`** — full PRD (3 milestones,
+  binding theme guardrails, 7 open questions with defaults).
+- **`prd.json`** — 20 dependency-ordered stories (US-001…020), validated
+  0 errors; US-020 is the judging evidence package. Old
+  `loop/geo-daily-quiz` progress archived to
+  `archive/2026-07-19-geo-daily-quiz/`; `progress.txt` reset.
+- **`PRD-round2.notes.md`** — decision record (12 raw thoughts + 7 grill
+  decisions). Keep: it's the "why" behind the PRD.
 
 ## Next steps
 
-1. **SVG depth-cue polish** is the actionable takeaway, parked in
-   `ideas.md`: soft shadow under the target outline, lift-and-settle on
-   solve, gentle parallax on drag-pan, richer post-draw fill. Each is
-   afternoon-sized, independent, no new deps. This answers the user's
-   original "UI could be more appealing" itch within the SVG stack —
-   likely the next thing they pick up.
-2. Carried over, still open: streak-multiplier tier values
-   (illustrative only, in `ideas.md`); mobile landscape/tablet
-   playtest pass (portrait 320–393px was verified earlier, wider
-   viewports never checked).
-3. Nothing is blocked.
+1. Launch the competing agents on `prd.json` via Orca (user drives).
+2. When branches return: judge on US-020's evidence packages
+   (four-outcome screenshot sets, both viewports, multi-day freeze
+   sequence) + full test suite.
+3. Post-competition: human review pass over generated `fun_fact` data
+   (US-010 flags needs-review); settle the 7 PRD open questions that
+   playtesting can now answer.
 
-## Other decisions this session
+## Key decisions (and why)
 
-- **Radial opacity fade** was demoed in the spike as the 3D zoom-reveal
-  answer (vs a real spotlight — lights can't gate hints because line
-  materials are unlit). Moot for the shelved migration, but the
-  reasoning is captured in the vault gotcha if 3D ever returns.
-- A design grill on the migration PRD was started and ended after Q1
-  when the comparison prompted the shelving — the PRD's remaining open
-  questions are all moot.
+- **All economy moves to score; clock is a fixed 60s pacer** — sudden
+  death + time-draining penalties conflict with the calm-ritual
+  retention evidence; score events give the engagement surface Randy
+  wants. Soft zero → "lockout mode": 5 wrong-guess budget after 0:00;
+  outcomes: solved / solved_late / locked_out / gave_up (late solves
+  extend streak + fill map at a lower tier).
+- **Zoom: −10/step, −100 hard cap, pay-once, never time** (thought 10).
+- **Map/heatmap split** — world map = trophy collection, solves only,
+  failures leave no trace; GitHub-style heatmap = honest per-day ledger
+  (incl. failed/frozen cells). Resolved the "what does failure mark?"
+  fork.
+- **Freezes: 1 per 5 consecutive solved days (late counts), bank 2,
+  auto-apply, kind break framing.** No login — save code instead
+  (export/import string; future Supabase payload).
+- **Local-date rollover, clean flip, no shim** (player base ~1).
+- **Theme guardrails binding on all agents**: "clean modern terminal
+  cracking a system in real time"; current monochrome identity is the
+  base; no green-rain/CRT/skulls; single green accent.
+- **Process:** Randy prefers raw thought-capture + discussion over
+  option-menu grilling (saved to memory).
+
+## Open questions / risks
+
+- The 7 PRD open questions (fun-fact timing, tuning values, day-number
+  epoch, lockout share encoding, heatmap colorblind glyphs, freeze
+  apply semantics, fun-fact review bar) — each has a shipping default
+  in the relevant prd.json story's notes.
+- WorldMapLayer perf debt (unmemoized, 3×-tiled) meets new load in
+  US-009/US-018 — both stories carry perf criteria.
+- `PRD.html` (old original-PRD render) is deleted in the working tree —
+  deletion happened outside this session's edits; committed as part of
+  the round-2 sweep.
 
 ## Files & commands in play
 
-- `npm run dev` / `npm run typecheck` / `npm run test` / `npm run build`
-- New this session: `docs/research/research-threejs-migration-geo.md`,
-  `prd-3d-migration.md` (SHELVED), `ideas.md` §"SVG depth-cue polish".
-- Vault articles written (via curate-vault, all verified):
-  `projects/geo/decisions/map-stays-svg-3d-shelved.md`,
-  `web/css3drenderer-perspective-dom-labels.md`,
-  `web/webgl-weak-primitives-lines-and-text.md`. The user hand-tweaked
-  the two web/ articles afterward (added cross-links to the shelving
-  decision) — those edits are intentional, keep them.
+- `prd-geo-round-2.md` / `.html`, `prd.json`, `PRD-round2.notes.md`,
+  `progress.txt`, `archive/2026-07-19-geo-daily-quiz/`.
+- Label fix: `src/lib/geo/pathBounds.ts`, `scene.ts`, + tests.
+- Research: vault `research/synthesis/daily-retention-loops-geo-game.md`.
+- Commands: `npm run dev` / `typecheck` / `test -- --run` / `build`;
+  playtest `http://localhost:5173/?date=YYYY-MM-DD`; screenshots via
+  python Playwright (`/Library/Frameworks/Python.framework/Versions/3.13/bin/python3`
+  — node playwright is NOT installed).
 
 ## Git state
 
-Branch `loop/geo-daily-quiz`, clean at `b957e23`. Not pushed.
+Branch `ui-updates` @ `f23161e` at handoff time. Committed during
+handoff: label/ring fix + round-2 PRD artifacts + pre-existing
+modifications (ideas.md, src/index.css, PRD.html deletion). No remote
+configured — push impossible until one is added.
 
 ## Don't redo
 
-- Everything in prior handoffs' "Don't redo" still applies (zoom
-  controls stay top-left; scrollWidth is not a valid overflow check in
-  this repo; keyboard/clock styling is settled).
-- **Don't re-propose the Three.js migration** — shelved with a
-  documented decision; reopening needs the user's explicit call.
-- **Don't decompose `prd-3d-migration.md`** — it's a SHELVED record,
-  not an active plan, and says so in its header.
-- CLAUDE.md is NO LONGER stale — the multi-session "fold the new
-  mechanics in" thread is resolved as of `1e2e59c`.
+- All prior handoffs' "Don't redo" items stand (zoom controls top-left,
+  scrollWidth check invalid here, island-day size decision, Three.js
+  shelved — see git history of this file).
+- Don't re-anchor neighbor labels on bbox clips — wrap-around neighbors
+  degenerate to frame-center (regression-tested).
+- Don't reintroduce time-based penalties anywhere in round 2 — the
+  economy decision is locked in the PRD.
+- Don't grill Randy through AskUserQuestion option menus for design
+  work — raw capture file + discussion.

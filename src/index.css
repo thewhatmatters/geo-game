@@ -65,13 +65,16 @@ body {
 /* Readability scrim: the map is a fixed full-viewport background, so ANY
    country's strokes (e.g. a boosted island outline, or the world layer
    once zoomed out) can pass directly under the bottom panel's copy —
-   trivia, name blanks, round outcome, share text. A soft elliptical
-   gradient behind the whole panel dims whatever crosses beneath it without
-   introducing a hard-edged card box; the negative inset pushes the fade-out
-   past the panel's own bounds (and past the viewport's bottom edge) so no
-   seam is visible at any viewport size. z-index -1 keeps it under the
-   panel's content but — because .app establishes its own stacking context
-   via z-index: 1 — still above the map layer behind .app. */
+   trivia, name blanks, round outcome, share text. Soft vertical falloff
+   (not a radial plateau) so the zone reads as atmosphere under the whole
+   chrome stack, never a hard-edged black card behind the question.
+   Negative inset pushes the fade past the panel bounds / viewport bottom
+   so no seam shows. z-index -1 keeps it under panel content but — because
+   .app establishes its own stacking context via z-index: 1 — still above
+   the map layer behind .app. The horizontal mask is what stops the scrim
+   reading as a black card: the vertical gradient alone still has hard
+   left/right edges (a visible rectangle over the map's hatching), so the
+   mask fades those sides to nothing too. */
 .app__bottom {
   position: relative;
 }
@@ -79,13 +82,28 @@ body {
 .app__bottom::before {
   content: "";
   position: absolute;
-  inset: -3rem -6rem -2rem;
+  inset: -2.5rem -7rem -2rem;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(
-    ellipse 100% 100% at 50% 60%,
-    rgba(0, 0, 0, 0.88) 45%,
-    rgba(0, 0, 0, 0.55) 70%,
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.92) 0%,
+    rgba(0, 0, 0, 0.72) 42%,
+    rgba(0, 0, 0, 0.35) 72%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 25%,
+    #000 75%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 25%,
+    #000 75%,
     transparent 100%
   );
 }
@@ -212,16 +230,21 @@ body {
 }
 
 .trivia-overlay {
-  /* Normal flow, stacked above .display-name inside .app__bottom — moved
-     off the map (was absolutely centered over the outline itself, where
-     white text on the white outline lines was hard to read). */
-  width: min(90vw, 420px);
-  margin: 0 auto 0.75rem;
-  padding: 0.5rem;
-  font-size: 1rem;
-  line-height: 1.4;
+  /* Caption above the name blanks — secondary chrome, not a card. No
+     solid fill/border; legibility comes from the bottom scrim + a soft
+     text halo so map strokes never punch through the type. */
+  width: min(88vw, 28rem);
+  margin: 0 auto 0.55rem;
+  padding: 0;
+  font-size: 0.92rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
   text-align: center;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.78);
+  text-shadow:
+    0 0 12px rgba(0, 0, 0, 0.95),
+    0 1px 2px rgba(0, 0, 0, 0.9);
   pointer-events: none;
   transition: opacity 0.3s ease;
 }
@@ -441,9 +464,8 @@ body {
   }
 
   .trivia-overlay {
-    margin-bottom: 0.5rem;
-    padding: 0.25rem;
-    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.85rem;
   }
 
   .display-name {

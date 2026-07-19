@@ -97,6 +97,68 @@ island-day-specific framing copy. Don't reopen without weighing the
 existing decision's rationale — but the decision predates real play, and
 the first play vote was against the feel.
 
+## Retention roadmap (from the 2026-07-17 deep-research report)
+
+Implementation plan derived from the vault report
+`research/synthesis/research-daily-retention-loops-geo-game.md` (74
+sources; recommendations section). Sequenced **3 → 2 → 1 → 4 → 5** —
+rollover first because every later feature keys localStorage data by
+date strings that should be right from the start. More concrete than the
+usual parking-lot entry, but still uncommitted until each item gets a
+go.
+
+1. **Solved-countries world map** (report's top pick — no competitor
+   ships one; players hand-build them). New `src/lib/collection/`
+   module, localStorage key `geo:collection`:
+   `{ [code]: { solvedOn, secondsLeft } }`, recorded in the same
+   App.tsx effect as `recordOutcome` so collection day and streak day
+   agree. Render as a fill pass in `WorldMapLayer` (already draws all
+   countries via `getAllCountries()`); today's solve animates its fill
+   on the end screen + "14 / 193" counter. `secondsLeft` enables
+   quality tiers later (NYT gold/blue analogue). **Open decision:** do
+   failed days dim-fill or stay blank? **Do first:** memoize
+   WorldMapLayer (gauntlet flag — unmemoized and 3×-tiled) before
+   adding per-country fill state.
+2. **Earned streak freezes + break framing.** Extend
+   `streak/index.ts` (stays pure, test-heavy): add `freezes` (cap 2);
+   earn 1 per 5 consecutive solves (`current_streak % 5 === 0`);
+   freezes cover **missed days only** (where `wasYesterday` fails,
+   consume `gap − 1` freezes if affordable), never failed rounds —
+   playing-and-failing still resets. On a real reset, return the ended
+   streak so the end screen celebrates it ("Your 34-day streak ends —
+   your longest yet") instead of showing a silent 0. Whole system must
+   fit a two-sentence UI explainer (Duolingo's copy win).
+3. **Local-date rollover** (UTC → device-local calendar date,
+   Wordle/Worldle model; no leaderboard holds us to UTC). One shared
+   `localDateString()` replacing `toIsoString().slice` in
+   `dailyCountry.ts`, `streak`, and (via import) `share`'s day number —
+   all three must switch together. One-time "today's country" reshuffle
+   at transition (do while playerbase is small). Guard the Wordle
+   timezone-travel bug: persist last-played `date + targetCode`; if
+   boot resolves to an already-recorded date, show the completed
+   end-state, not a replayable round. **Amends a CLAUDE.md locked
+   mechanic ("hash of UTC date") — needs an explicit yes + CLAUDE.md
+   update in the same commit.**
+4. **End screen as the retention surface** (composition in App.tsx;
+   good Claude-vs-Grok Orca race candidate — self-contained, visually
+   judgeable). Adds: countdown to next country at local midnight
+   (DotMatrixNumber reuse; only sensible after item 3), streak +
+   freeze display with item 2's framing, item 1's map-fill moment.
+5. **Timer-keyed badges** (deferred until 1+2 exist). Pure
+   `src/lib/badges/` evaluator `(round, collection, streak) →
+   newlyEarned[]`, `geo:badges` storage, earn toast (NYT pattern).
+   Vocabulary: 30+s solve, zero wrong guesses, no-zoom solve,
+   island-day solve, 7/30/100-day streaks, 10/50/100 countries,
+   continent complete (needs a continent field — slot with next
+   `gen:countries` regen).
+
+**Protect list (no work, just don't undo):** one-a-day hard stop,
+spoiler-safe share, bonus-on-top rewards, trivia after failure, no
+leaderboard, no notifications. **Metrics for the Supabase milestone:**
+share of players at 7+ day streaks; return-within-24h after a streak
+break — unmeasurable in the static app, day-one requirements when the
+backend lands (streak-fragility gotcha already raised its priority).
+
 ## Transcontinental-territory days frame half the planet
 
 Discovered playtesting 2026-07-17: the Netherlands day frames a ~5000-unit

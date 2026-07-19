@@ -7,9 +7,10 @@ day, identical for every player. The player solves it via literal
 Hangman-style letter guessing against a 60-second clock, while the
 target's outline and three neighboring countries' outlines/letters draw
 in simultaneously, and the player can optionally zoom out to reveal
-further world-map context at a time cost. Implemented and in active
-playtesting on branch `loop/geo-daily-quiz` — see `HANDOFF.md` for the
-current session's state.
+further world-map context. The clock is a pure pacer — no action adds
+or steals time. Implemented and in active playtesting on branch
+`loop/geo-daily-quiz` — see `HANDOFF.md` for the current session's
+state.
 
 Full original design research (superseded in parts — see below) lives in
 the vault:
@@ -28,14 +29,14 @@ This *is* the product; get it right before optimizing anything else.
 - Player guesses individual letters (Hangman-style) to fill in blanks of
   the country's name — not multiple choice, not full-name typing.
 - A single flat **60-second countdown clock** per round (not scaled by
-  country name length).
-- Each wrong letter guess subtracts time, **scaled by the country's
-  unique-letter count** (fewer unique letters = harsher penalty, since
-  the puzzle is otherwise easier): illustrative tiers — ≤5 unique
-  letters → -20s, 6–9 → -15s, 10+ → -10s. Exact tiers/values need
-  playtesting.
-- Clock hits 0:00 → round failed. An explicit "give up" button produces
-  the same outcome early.
+  country name length). The clock is a **pure pacer**: it counts 60 → 0
+  at 1s/tick and no player action — wrong guesses, correct streaks,
+  zooming — ever adds or steals time (the old wrong-guess time penalty,
+  correct-streak +2s bonus, and zoom time costs are removed).
+- Reaching 0:00 does **not** end or fail the round (transitional: a
+  lockout mode with a wrong-guess budget replaces this) — the round
+  simply continues with the clock parked at 0 and all hints fully drawn.
+  An explicit "give up" button still ends the round as failed.
 - No multiple-choice anywhere in this loop — that was the original vault
   design and is now superseded.
 
@@ -76,44 +77,38 @@ This *is* the product; get it right before optimizing anything else.
   top-center header (`DotMatrixNumber`) — supersedes the original
   "small, unobtrusive, top-right" spec; playtesting favored a more
   legible display.
-- Every **2 consecutive correct** letter guesses (streak reset by any
-  wrong guess) grants a flat **+2s** time bonus — positive
-  reinforcement to offset the wrong-guess-only penalty design
-  (`CORRECT_STREAK_BONUS_INTERVAL`/`CORRECT_STREAK_BONUS_SECONDS` in
-  `lib/game/clock.ts`). Bonus time is clamped so it can never push the
-  clock past the round's starting duration.
+- Correct-guess streaks are still tracked in RoundCore
+  (`correctStreak`, reset by any wrong guess) as the raw material for
+  the score combo multiplier — but they no longer grant time.
 
 **Map exploration — zoom/pan (new mechanic, not in the original design)**
 - The player can scroll/pinch (or use on-screen +/− buttons, fixed
   top-left) to zoom out beyond the default framing, revealing the
-  wider world map beyond the target + 3 fixed neighbors, at a flat
-  one-time time cost per zoom-out "step" crossed (`ZOOM_STEP` /
-  `ZOOM_PENALTY_SECONDS` in `lib/game/zoom.ts`) — zooming back in and
-  back out over already-seen territory never re-charges.
-- Reaching maximum zoom (the whole world visible) charges one
-  additional one-time surcharge on top of the normal per-step cost
-  (`WORLD_REVEAL_SURCHARGE_SECONDS`) — a much stronger hint than an
-  ordinary step.
+  wider world map beyond the target + 3 fixed neighbors. Zooming no
+  longer costs time (pure-pacer clock); step-crossing detection
+  (`ZOOM_STEP` / `zoomStepsCrossed` in `lib/game/zoom.ts`) remains for
+  the UI reveal pulse and the upcoming score-based zoom charge, and
+  `maxZoomReached` still marks new vs re-crossed territory.
 - Drag-to-pan is free but bounded to a radius proportional to how far
   the player has already zoomed out (`PAN_RADIUS_FACTOR`) — panning
-  can never reveal more than the current zoom level already paid for.
+  can never reveal more than the current zoom level already reveals.
   Releasing the drag snaps elastically back to center.
 - Zoom stays available after the round ends (solved or failed) so the
-  player can freely explore the revealed map — no further time cost
-  applies once the clock has stopped.
+  player can freely explore the revealed map.
 
 **Live score**
 - A running score is always visible (fixed top-right corner, paired
   with the top-left zoom controls): `SCORE_BASE_POINTS` (500) +
   `remainingSeconds * SCORE_SECONDS_MULTIPLIER` (10/sec) —
   `lib/game/score.ts`. It's a rescaled *presentation* of
-  `remainingSeconds`, not a separate tracked value, so every
-  modifier (wrong-guess penalty, zoom-out penalty, correct-streak
-  bonus) that touches the clock automatically shows up here too.
+  `remainingSeconds`, not a separate tracked value (interim scoring —
+  the event-sourced score economy with combo multiplier replaces it).
 - Freezes naturally on solve (the clock stops ticking); force-zeroed
   on failure/give-up — no reward for not solving.
-- Each discrete bonus/penalty event shows a transient "+20"/"−150"
-  popup next to the score (not fired for ordinary per-tick decay).
+- The transient "+20"/"−150" popup next to the score is wired to
+  RoundCore's score-event log (never fired for ordinary per-tick
+  decay); under the pure pacer no events are emitted yet — the score
+  economy re-populates the log.
 - A confetti burst (`canvas-confetti`) fires once, exactly on a
   genuine solve (not on give-up/timeout).
 
@@ -191,10 +186,11 @@ This *is* the product; get it right before optimizing anything else.
   target's trivia fact and the post-round spoiler-safe share string.
 - `src/lib/geo/` → TopoJSON loading (`scene.ts`, `pathBounds.ts`),
   neighbor compass-direction slot assignment (`labelLayout.ts`).
-- `src/lib/game/` → `clock.ts` (clock/penalty/bonus state machine),
-  `zoom.ts` (zoom-out penalty + pan-radius math), `score.ts` (live
-  score derived from the clock), `useGameRound.ts` (ties it all
-  together), `neighborReveal.ts` (randomized letter-reveal order),
+- `src/lib/game/` → `round.ts` (RoundCore: the round's pure reducer —
+  tick/guess/zoom/give-up state machine), `zoom.ts` (zoom-out step
+  detection + pan-radius math), `score.ts` (interim live score derived
+  from the clock), `useGameRound.ts` (ties it all together),
+  `neighborReveal.ts` (randomized letter-reveal order),
   `dailyCountry.ts` (deterministic hash of UTC date → today's country +
   neighbor subset, no backend call).
 - `src/lib/streak/` → localStorage-backed streak read/write
@@ -216,8 +212,10 @@ This *is* the product; get it right before optimizing anything else.
   the country/outline/trivia dataset from source data.
 
 ## Open design decisions — needs playtesting, not just spec
-- Exact time-penalty tiers by unique-letter count (illustrative only:
-  -20s/-15s/-10s).
+- Score-economy values for the upcoming event-sourced score (combo
+  multiplier steps, wrong-letter deduction tiers keyed off unique-letter
+  count, zoom-step charge) — the old time-penalty tiers (-20s/-15s/-10s)
+  are gone with the pure-pacer clock; point values need playtesting.
 - Exact neighbor-slot compass-anchor scheme and collision-resolution
   rule when multiple neighbors round to the same direction.
 - Exact deterministic-subset selection rule for countries with >3
@@ -225,11 +223,8 @@ This *is* the product; get it right before optimizing anything else.
 - Exact guess-pattern visual format for the share string.
 - Trivia fact review process specifics (who reviews, what "verifiably
   true" bar is enforced).
-- Zoom-out penalty tuning (`ZOOM_STEP`, `ZOOM_PENALTY_SECONDS`,
-  `WORLD_REVEAL_SURCHARGE_SECONDS`) and the correct-streak bonus size
-  (`CORRECT_STREAK_BONUS_INTERVAL`/`_SECONDS`) — both currently
-  placeholder values, same "needs playtesting" status as the original
-  penalty tiers.
+- Zoom step size (`ZOOM_STEP`) and wheel sensitivity
+  (`ZOOM_SENSITIVITY`) tuning — needs playtesting.
 - Streak-based score multiplier (tabled in `ideas.md`) — one facet
   decided (keys off the solve-streak, not a login/open streak), tier
   values still undecided, not yet implemented.

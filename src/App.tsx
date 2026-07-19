@@ -54,7 +54,7 @@ const TARGET_FILL_COLOR = "rgba(255, 255, 255, 0.12)";
 /** Pre-completion fill: fully transparent rather than "none", because CSS can't interpolate fill from "none" — the fill would pop in instead of fading (see CountryPath's fill transition). */
 const TARGET_FILL_HIDDEN = "rgba(255, 255, 255, 0)";
 
-/** One button click = one full ZOOM_STEP of zoom change — the same size step a scroll/pinch gesture crosses, so a button click costs exactly the same one-time penalty as scrolling that far (see lib/game/zoom.ts). */
+/** One button click = one full ZOOM_STEP of zoom change — the same size step a scroll/pinch gesture crosses, so buttons and wheel stay proportionate (see lib/game/zoom.ts). */
 const BUTTON_ZOOM_DELTA = ZOOM_STEP / ZOOM_SENSITIVITY;
 
 /**
@@ -62,25 +62,24 @@ const BUTTON_ZOOM_DELTA = ZOOM_STEP / ZOOM_SENSITIVITY;
  * reveal opacity ramps from 0 to full. Deliberately NOT a fraction of the
  * scene's full zoom range: maxZoom is derived from the target's viewBox
  * size, so on tiny-target days it's enormous (hundreds), and a
- * fraction-of-range opacity collapses to ~0 for the first several paid
- * zoom steps — the player pays -5s per step and sees nothing change. Keyed
- * to absolute units, every step produces a visible brightness delta on
- * every day-size. Tuned so the first two paid button steps are each
- * unmistakable at a glance: step 1 (zoom 1.5) lands at 0.5/1.1 ≈ 0.45
- * revealed, step 2 (zoom 2.0) at 1.0/1.1 ≈ 0.91, and step 3+ is fully
- * saturated. The reveal RADIUS still scales with the full range (see
- * zoomProgress below), preserving the radial near-target-first character.
+ * fraction-of-range opacity collapses to ~0 for the first several zoom
+ * steps — the player zooms out and sees nothing change. Keyed to absolute
+ * units, every step produces a visible brightness delta on every day-size.
+ * Tuned so the first two button steps are each unmistakable at a glance:
+ * step 1 (zoom 1.5) lands at 0.5/1.1 ≈ 0.45 revealed, step 2 (zoom 2.0)
+ * at 1.0/1.1 ≈ 0.91, and step 3+ is fully saturated. The reveal RADIUS
+ * still scales with the full range (see zoomProgress below), preserving
+ * the radial near-target-first character.
  */
 const WORLD_REVEAL_OPACITY_ZOOM_SPAN = 1.1;
 
 /**
  * One-shot "reveal pulse" — an expanding, fading white ring detonating
  * from the map center each time the player's max zoom-out crosses a NEW
- * ZOOM_STEP boundary (the exact same crossing the -5s penalty and its -50
- * score popup fire on — see zoomStepsCrossed and the paidZoomSteps effect
- * below), so the purchase visibly lands on the map itself, synchronized
- * with the popup. Rendered outside the pan/zoom transforms so its size is
- * pure screen-space px regardless of zoom level.
+ * ZOOM_STEP boundary (see zoomStepsCrossed and the zoomSteps effect
+ * below), so the newly revealed territory visibly lands on the map itself.
+ * Rendered outside the pan/zoom transforms so its size is pure
+ * screen-space px regardless of zoom level.
  */
 const ZOOM_PULSE_DURATION_MS = 700;
 const ZOOM_PULSE_START_RADIUS_PX = 40;
@@ -94,10 +93,10 @@ const ZOOM_PULSE_PEAK_OPACITY = 0.7;
  * How far the player can drag-pan the view, expressed as a multiple of the
  * target's own base viewBox size per unit of zoom beyond ZOOM_MIN. At
  * ZOOM_MIN (no zoom-out yet) this is 0 — panning is disabled until you've
- * paid at least some zoom-out cost, since there's nothing extra revealed to
+ * zoomed out at least one step, since there's nothing extra revealed to
  * pan into yet. This deliberately keeps panning from being a free way to
  * peek at zoomed-in detail far from the target without ever crossing a
- * zoom-out penalty threshold.
+ * zoom-out step threshold.
  */
 const PAN_RADIUS_FACTOR = 0.5;
 
@@ -239,10 +238,11 @@ function App({ boot }: { boot: RoundBoot }) {
   }, [round.status]);
 
   // Transient "+20"/"-150" popup next to the score, one per discrete
-  // bonus/penalty event (see ScoreEvent) — NOT for the ordinary per-tick
-  // decay, which just moves the score number itself. Keyed on the event's
-  // own id so a repeated identical delta (e.g. two -150 wrong guesses back
-  // to back) still restarts the fade instead of silently no-opping.
+  // score event (see ScoreEvent) — NOT for the ordinary per-tick decay,
+  // which just moves the score number itself. Keyed on the event's own id
+  // so a repeated identical delta back to back still restarts the fade
+  // instead of silently no-opping. (No events are emitted under the pure
+  // pacer; this comes alive with the event-sourced score economy.)
   const [activeDelta, setActiveDelta] = useState<{ id: number; points: number } | null>(null);
   useEffect(() => {
     if (!round.scoreEvent) return;
@@ -252,20 +252,18 @@ function App({ boot }: { boot: RoundBoot }) {
   }, [round.scoreEvent]);
 
   // Reveal-pulse trigger: pure UI-layer detection of maxZoomReached
-  // crossing a new ZOOM_STEP boundary — the same arithmetic the reducer's
-  // zoom economy charges on (zoomStepsCrossed), so the ring fires exactly
-  // when the -5s/-50 popup does, and re-zooming over already-paid
-  // territory re-fires nothing. Keyed on the step count so consecutive
-  // steps restart the animation via remount.
-  const paidZoomSteps = zoomStepsCrossed(round.maxZoomReached);
+  // crossing a new ZOOM_STEP boundary (zoomStepsCrossed) — re-zooming over
+  // already-seen territory re-fires nothing. Keyed on the step count so
+  // consecutive steps restart the animation via remount.
+  const crossedZoomSteps = zoomStepsCrossed(round.maxZoomReached);
   const [zoomPulseStep, setZoomPulseStep] = useState(0);
-  const prevPaidStepsRef = useRef(paidZoomSteps);
+  const prevCrossedStepsRef = useRef(crossedZoomSteps);
   useEffect(() => {
-    if (paidZoomSteps > prevPaidStepsRef.current) {
-      prevPaidStepsRef.current = paidZoomSteps;
-      setZoomPulseStep(paidZoomSteps);
+    if (crossedZoomSteps > prevCrossedStepsRef.current) {
+      prevCrossedStepsRef.current = crossedZoomSteps;
+      setZoomPulseStep(crossedZoomSteps);
     }
-  }, [paidZoomSteps]);
+  }, [crossedZoomSteps]);
 
   // Re-clamps whenever the zoom level shrinks the allowed pan budget (radius
   // or vertical range) so a subsequent drag starts from a valid position
@@ -404,10 +402,9 @@ function App({ boot }: { boot: RoundBoot }) {
               the zoom pivot/scale, with NO transition, so scroll/pinch zoom
               stays immediately responsive rather than fighting a queued
               animation. Panning is bounded to a radius tied to the current
-              zoom level (see PAN_RADIUS_FACTOR) — revealing more surrounding
-              context via zoom costs time (lib/game/zoom.ts); panning itself
-              is free but can never show more than that zoom level already
-              paid for. */}
+              zoom level (see PAN_RADIUS_FACTOR): zooming out reveals more
+              surrounding context; panning itself is free but can never
+              show more than the current zoom level already reveals. */}
           <g
             className={isDragging ? undefined : "pan-snap"}
             transform={`translate(${pan.x} ${pan.y + panelOffsetUnits})`}
@@ -541,9 +538,9 @@ function App({ boot }: { boot: RoundBoot }) {
       <div className="app">
         {/* Fixed corner, independent of the centered .app__top/.app__bottom
             flow. Always visible (not gated on solve) — it's live during
-            play (ticks with the clock, jumps on bonuses/penalties) and
-            only force-zeroes on failure (see computeScore); no spoiler
-            concern since it never reveals the country itself. */}
+            play (ticks with the clock) and only force-zeroes on failure
+            (see computeScore); no spoiler concern since it never reveals
+            the country itself. */}
         <p className="score-display" data-testid="score-display">
           Score: {computeScore(round.status, round.remainingSeconds)}
           {activeDelta && (
@@ -605,9 +602,9 @@ function App({ boot }: { boot: RoundBoot }) {
           </button>
         </div>
         {/* Fixed corner cluster, independent of the top/bottom panel flow —
-            same button click cost as one scroll/pinch step (see
-            BUTTON_ZOOM_DELTA); zoom itself stays available after the round
-            ends (see useGameRound's handleZoomWheel), so these aren't
+            one click crosses the same ZOOM_STEP as one scroll/pinch step
+            (see BUTTON_ZOOM_DELTA); zoom itself stays available after the
+            round ends (see useGameRound's handleZoomWheel), so these aren't
             disabled on solved/failed. */}
         <div className="zoom-controls">
           <button

@@ -9,6 +9,7 @@ import { WorldMapLayer } from "./components/WorldMapLayer";
 import { TriviaOverlay } from "./components/TriviaOverlay";
 import { ShareResult } from "./components/ShareResult";
 import { DotMatrixNumber } from "./components/DotMatrixNumber";
+import { ScoreReadout } from "./components/ScoreReadout";
 import { getAllCountries } from "./lib/game/dailyCountry";
 import { isSolveStatus, useGameRound } from "./lib/game/useGameRound";
 import type { DisplayChar } from "./lib/game/useGameRound";
@@ -98,9 +99,6 @@ const ZOOM_PULSE_PEAK_OPACITY = 0.7;
  * zoom-out step threshold.
  */
 const PAN_RADIUS_FACTOR = 0.5;
-
-/** How long the floating "+20"/"-150" score-delta popup stays on screen before fading out. */
-const SCORE_DELTA_DISPLAY_MS = 1200;
 
 // Static for the whole session — pure data with no hidden inputs, so
 // module scope is honest here (unlike the boot-derived values, which come
@@ -236,19 +234,6 @@ function App({ boot }: { boot: RoundBoot }) {
     confettiFiredRef.current = true;
     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
   }, [round.status]);
-
-  // Transient "+200"/"-150" popup next to the score, one per discrete
-  // score event (see ScoreEvent) — every letter guess emits one; the clock
-  // emits nothing. Keyed on the event's own id so a repeated identical
-  // delta back to back still restarts the fade instead of silently
-  // no-opping.
-  const [activeDelta, setActiveDelta] = useState<{ id: number; points: number } | null>(null);
-  useEffect(() => {
-    if (!round.scoreEvent) return;
-    setActiveDelta({ id: round.scoreEvent.id, points: round.scoreEvent.delta });
-    const timer = setTimeout(() => setActiveDelta(null), SCORE_DELTA_DISPLAY_MS);
-    return () => clearTimeout(timer);
-  }, [round.scoreEvent]);
 
   // Reveal-pulse trigger: pure UI-layer detection of maxZoomReached
   // crossing a new ZOOM_STEP boundary (zoomStepsCrossed) — re-zooming over
@@ -540,17 +525,11 @@ function App({ boot }: { boot: RoundBoot }) {
             play (moves on every guess) and only force-zeroes on failure
             (see computeScore); no spoiler concern since it never reveals
             the country itself. */}
-        <p className="score-display" data-testid="score-display">
-          Score: {round.score}
-          {activeDelta && (
-            <span
-              key={activeDelta.id}
-              className={`score-delta ${activeDelta.points >= 0 ? "score-delta--positive" : "score-delta--negative"}`}
-            >
-              {activeDelta.points >= 0 ? `+${activeDelta.points}` : activeDelta.points}
-            </span>
-          )}
-        </p>
+        <ScoreReadout
+          score={round.score}
+          multiplier={round.multiplier}
+          scoreEvent={round.scoreEvent}
+        />
         {/* Pinned to the top edge, leaving the center of the screen — where
             the target actually renders — completely unobstructed. Seeing
             the outline clearly is the whole point of the game. */}

@@ -140,7 +140,7 @@ body {
   transition: transform 0.25s ease-out;
 }
 
-/* Top-left, paired with .score-display's top-right — deliberately NOT
+/* Top-left, paired with .score-readout's top-right — deliberately NOT
    bottom-right anymore: that pinned it directly over the on-screen
    keyboard's bottom row on phone-height viewports (the keyboard's own
    height varies and was never accounted for). The top corners always
@@ -156,26 +156,74 @@ body {
   pointer-events: auto;
 }
 
-.score-display {
+/* Self-contained live-score surface (US-005). Fixed top-right for now;
+   US-006 owns final placement, so everything the readout needs — value,
+   multiplier badge, and the popup column — is anchored inside this one
+   positioned box and moves as a unit. */
+.score-readout {
   position: fixed;
   top: 1rem;
   right: 1rem;
   z-index: 1;
-  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
   font-size: 1.1rem;
   font-weight: 600;
 }
 
+.score-readout__value {
+  white-space: nowrap;
+}
+
+/* Only mounted when the combo is actually boosting (> x1), so its mere
+   presence is the "visually distinct above x1" signal — reinforced with a
+   pill and monochrome accent (theme guardrails: no color that isn't
+   green-positive / red-negative on the popups). */
+.score-readout__multiplier {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  animation: score-multiplier-pop 0.25s ease-out;
+}
+
+@keyframes score-multiplier-pop {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Anchor for the transient popups: they stack downward from just under the
+   readout, each offset by its slot so a burst reads as a short column
+   instead of overprinting. Zero-size + no pointer events so it never
+   affects layout or blocks clicks. */
+.score-readout__popups {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
 .score-delta {
   position: absolute;
-  left: 50%;
-  top: 100%;
-  transform: translateX(-50%);
-  margin-top: 0.25rem;
+  top: calc(0.25rem + var(--popup-slot, 0) * 1.35rem);
+  right: 0;
   font-size: 0.9rem;
   font-weight: 700;
   white-space: nowrap;
-  animation: score-delta-float 1.2s ease-out forwards;
+  animation: score-delta-float 1.5s ease-out forwards;
 }
 
 .score-delta--positive {
@@ -186,21 +234,27 @@ body {
   color: #e05555;
 }
 
+/* A zero-value event (none emitted today, but the type allows it) stays
+   monochrome per the theme guardrails. */
+.score-delta--neutral {
+  color: #fff;
+}
+
 @keyframes score-delta-float {
   0% {
     opacity: 0;
-    transform: translateX(-50%) translateY(-4px);
+    transform: translateY(-4px);
   }
   15% {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
   }
-  75% {
+  70% {
     opacity: 1;
   }
   100% {
     opacity: 0;
-    transform: translateX(-50%) translateY(10px);
+    transform: translateY(10px);
   }
 }
 
@@ -450,7 +504,7 @@ body {
    squeezing the clear map band — the thing the game is actually about —
    into a shallow strip. Everything here trims panel chrome spacing only:
    the keyboard keys keep their clamp() floor untouched, and the fixed
-   corner controls (.score-display, .zoom-controls) don't move. */
+   corner controls (.score-readout, .zoom-controls) don't move. */
 @media (max-width: 480px) {
   .app {
     padding: 0.75rem 1rem;

@@ -44,6 +44,12 @@ export const SCORE_FLOOR = 0;
  */
 export const TIME_BONUS_PER_SECOND = 10;
 
+/** Cost of revealing one newly-crossed zoom-out step. */
+export const ZOOM_STEP_PENALTY = 10;
+
+/** Maximum total score that zooming can deduct during one round. */
+export const ZOOM_PENALTY_CAP = 100;
+
 /** Multiplier for the Nth consecutive correct letter (N counted inclusive of that letter), capped at the ladder's last step. */
 export function comboMultiplier(correctStreak: number): number {
   if (correctStreak < 1) return COMBO_MULTIPLIER_STEPS[0];

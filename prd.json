@@ -72,7 +72,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "src/lib/game/zoom.ts keeps step detection; the charge becomes a RoundCore score event. Deletes the 'zoom out to death' failure mode by construction."
     },
     {

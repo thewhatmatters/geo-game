@@ -13,7 +13,13 @@ import {
   LOCKOUT_ATTEMPT_BUDGET,
 } from "./round";
 import type { RoundEvent, RoundState } from "./round";
-import { roundScore, timeBonus, TIME_BONUS_PER_SECOND } from "./score";
+import {
+  roundScore,
+  timeBonus,
+  TIME_BONUS_PER_SECOND,
+  ZOOM_PENALTY_CAP,
+  ZOOM_STEP_PENALTY,
+} from "./score";
 import { ZOOM_SENSITIVITY, ZOOM_STEP } from "./zoom";
 
 /** "Chad": 4 unique letters — the old harshest penalty tier. */
@@ -348,27 +354,39 @@ function atZeroWith(target: { name: string; unique_letters: number }): RoundStat
   return run(createRound(target, 3), tick(60));
 }
 
-describe("zoom movement (no longer an economy)", () => {
-  it("crossing a new zoom-out step never costs time", () => {
-    const state = run(createRound(CHAD, 10), oneZoomStep());
+describe("zoom score economy", () => {
+  it("charges each newly-crossed zoom-out step without costing time", () => {
+    const earned = run(createRound(CHAD, 10), guess("C"));
+    const state = run(earned, oneZoomStep());
     expect(state.zoom).toBeCloseTo(1 + ZOOM_STEP, 5);
     expect(state.remainingSeconds).toBe(60);
-    expect(latestScoreEvent(state)).toBeNull();
+    expect(state.score).toBe(100 - ZOOM_STEP_PENALTY);
+    expect(latestScoreEvent(state)).toMatchObject({
+      type: "zoom",
+      delta: -ZOOM_STEP_PENALTY,
+      multiplier: 1.5,
+    });
   });
 
-  it("zooming to the world reveal never costs time either", () => {
-    const state = run(createRound(CHAD, 3), { type: "ZOOM", deltaY: 1_000_000 });
-    expect(state.zoom).toBe(3);
-    expect(state.maxZoomReached).toBe(3);
+  it("hard-caps total zoom deductions when a large move crosses many steps", () => {
+    const earned = run(createRound(CHAD, 100), guess("C"), guess("H"));
+    const state = run(earned, { type: "ZOOM", deltaY: 1_000_000 });
+    expect(state.zoom).toBe(100);
     expect(state.remainingSeconds).toBe(60);
-    expect(state.scoreEvents).toEqual([]);
+    expect(state.score).toBe(250 - ZOOM_PENALTY_CAP);
+    expect(latestScoreEvent(state)).toMatchObject({ type: "zoom", delta: -ZOOM_PENALTY_CAP });
+
+    const atMaxAgain = run(state, { type: "ZOOM", deltaY: 1_000_000 });
+    expect(atMaxAgain.score).toBe(state.score);
+    expect(atMaxAgain.scoreEvents).toHaveLength(state.scoreEvents.length);
   });
 
-  it("re-crossing already-seen territory behaves exactly like new territory", () => {
-    const out = run(createRound(CHAD, 10), oneZoomStep());
+  it("never re-charges an already-paid step and never refunds zooming in", () => {
+    const out = run(run(createRound(CHAD, 10), guess("C")), oneZoomStep());
     const backIn = run(out, { type: "ZOOM", deltaY: -ZOOM_STEP / ZOOM_SENSITIVITY });
     const outAgain = run(backIn, oneZoomStep());
-    expect(outAgain.remainingSeconds).toBe(out.remainingSeconds);
+    expect(backIn.score).toBe(out.score);
+    expect(outAgain.score).toBe(out.score);
     expect(outAgain.scoreEvents.length).toBe(out.scoreEvents.length);
   });
 
@@ -384,7 +402,7 @@ describe("zoom movement (no longer an economy)", () => {
     const before = run(createRound(CHAD, 10), tick(10)); // 50 remaining
     const after = run(before, oneZoomStep(), oneZoomStep(), { type: "ZOOM", deltaY: -50 }, oneZoomStep());
     expect(after.remainingSeconds).toBe(before.remainingSeconds);
-    expect(after.scoreEvents).toEqual([]);
+    expect(after.scoreEvents.filter((event) => event.type === "zoom")).toHaveLength(2);
   });
 });
 

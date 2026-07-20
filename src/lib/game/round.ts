@@ -1,10 +1,12 @@
 import type { Country } from "./dailyCountry";
-import { applyZoomDelta, ZOOM_MIN } from "./zoom";
+import { applyZoomDelta, zoomStepsCrossed, ZOOM_MIN } from "./zoom";
 import {
   applyScoreDelta,
   comboMultiplier,
   correctLetterPoints,
   wrongLetterPenalty,
+  ZOOM_PENALTY_CAP,
+  ZOOM_STEP_PENALTY,
 } from "./score";
 
 /**
@@ -68,7 +70,7 @@ export interface DisplayChar {
 /**
  * One discrete score event for the UI to surface as a transient "+200"/
  * "-150" popup next to the score. The clock emits nothing — it's a pure
- * pacer — so every event here comes from a letter guess. `id` is a
+ * pacer — so every event here comes from a scoring player action. `id` is a
  * monotonic counter so the UI can key a fresh animation off it even if the
  * same delta repeats back to back.
  *
@@ -78,7 +80,7 @@ export interface DisplayChar {
  */
 export interface ScoreEvent {
   id: number;
-  type: "correct" | "wrong";
+  type: "correct" | "wrong" | "zoom";
   delta: number;
   /** The combo multiplier in force after this event — x1 on any wrong letter. */
   multiplier: number;
@@ -100,7 +102,7 @@ export interface RoundState {
   /** Furthest zoom-out reached this round — lets consumers distinguish new territory from re-crossed territory (see lib/game/zoom.ts). */
   maxZoomReached: number;
   readonly zoomMax: number;
-  /** Newest-last — see latestScoreEvent. One entry per scoring guess; the clock never appends. */
+  /** Newest-last — see latestScoreEvent. One entry per scoring action; the clock never appends. */
   scoreEvents: ScoreEvent[];
   /** Wrong guesses left before lockout ends the round. Only decremented while inLockout — full budget until the clock hits 0. */
   lockoutAttemptsRemaining: number;
@@ -203,7 +205,26 @@ function reduceGuess(state: RoundState, rawLetter: string): RoundState {
 
 function reduceZoom(state: RoundState, deltaY: number): RoundState {
   const result = applyZoomDelta(state.zoom, deltaY, state.maxZoomReached, state.zoomMax);
-  return { ...state, zoom: result.zoom, maxZoomReached: result.maxZoomReached };
+  const moved = { ...state, zoom: result.zoom, maxZoomReached: result.maxZoomReached };
+
+  // Terminal rounds remain explorable, but their economy is closed.
+  if (state.status !== "running") return moved;
+
+  // The high-water mark is also the pay-once ledger: only boundaries above
+  // the furthest previously reached step are new. Comparing capped cumulative
+  // costs makes a single large wheel/pinch movement obey the per-round cap.
+  const previousSteps = zoomStepsCrossed(state.maxZoomReached);
+  const reachedSteps = zoomStepsCrossed(result.maxZoomReached);
+  const previousCost = Math.min(ZOOM_PENALTY_CAP, previousSteps * ZOOM_STEP_PENALTY);
+  const reachedCost = Math.min(ZOOM_PENALTY_CAP, reachedSteps * ZOOM_STEP_PENALTY);
+  const charge = reachedCost - previousCost;
+
+  if (charge <= 0) return moved;
+  return withScoreEvent(moved, {
+    type: "zoom",
+    delta: -charge,
+    multiplier: currentMultiplier(state),
+  });
 }
 
 export function reduceRound(state: RoundState, event: RoundEvent): RoundState {

@@ -522,6 +522,10 @@ body {
   border-right: none;
 }
 
+.display-name__letter {
+  display: inline-block;
+}
+
 /* The keyboard is the bottom of the .solve-panel stack, so its top spacing
    is the connector's job now — the old 1rem gap made it read as a separate
    block from the slots it fills. */

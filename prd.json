@@ -138,8 +138,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "Suggested skills: automate-browser. Pure tuning story - no design decisions."
+      "passes": true,
+      "notes": "ZOOM_SENSITIVITY 0.0015 → 0.004 (~0.40 zoom per typical 100 deltaY notch vs old 0.15). Buttons stay ZOOM_STEP via BUTTON_ZOOM_DELTA = ZOOM_STEP/ZOOM_SENSITIVITY. Step-crossing covered in zoom.test.ts. Browser: one notch +0.4, button +0.5, mid-round wheel ok (tmp/us-008/)."
     },
     {
       "id": "US-009",

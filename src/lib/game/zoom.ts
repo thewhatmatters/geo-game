@@ -2,8 +2,20 @@
 export const ZOOM_MIN = 1;
 /** Size of a "zoom-out step" — the discrete unit of map exploration the UI reacts to (reveal pulse) and the score economy prices (see lib/game/round.ts). */
 export const ZOOM_STEP = 0.5;
-/** Wheel deltaY units per unit of zoom change. */
-export const ZOOM_SENSITIVITY = 0.0015;
+/**
+ * Zoom units applied per unit of wheel `deltaY` in `applyZoomDelta`.
+ *
+ * US-008 retune (was 0.0015 → now 0.004): at 0.0015 a typical mouse-wheel
+ * notch (~100 deltaY) only moved zoom by 0.15 — about 30% of one ZOOM_STEP —
+ * so scroll/trackpad felt sluggish. 0.004 yields ~0.40 zoom per notch
+ * (nearly one ZOOM_STEP), which is clearly visible without jumping multiple
+ * priced steps in a single notch.
+ *
+ * On-screen +/- buttons use `ZOOM_STEP / ZOOM_SENSITIVITY` as their synthetic
+ * deltaY, so one click still equals exactly one ZOOM_STEP regardless of this
+ * constant — buttons stay proportionate when sensitivity is retuned.
+ */
+export const ZOOM_SENSITIVITY = 0.004;
 
 export interface ZoomUpdate {
   zoom: number;

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "gen:countries-geo": "node scripts/generate-countries-geo.mjs",
-    "gen:countries": "node scripts/merge-country-metadata.mjs",
+    "gen:countries": "node scripts/generate-countries-geo.mjs && node scripts/merge-country-metadata.mjs",
+    "gen:fun-facts": "node scripts/generate-fun-facts-manifest.mjs",
     "test": "vitest run"
   },
   "dependencies": {

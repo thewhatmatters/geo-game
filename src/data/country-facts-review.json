@@ -1,0 +1,962 @@
+{
+  "ABW": {
+    "fun_fact": "This island lies just south of the Caribbean hurricane belt, where direct hurricane hits are rare enough that locals can usually name the handful that happened from memory.",
+    "needsReview": true
+  },
+  "AFG": {
+    "fun_fact": "This place has changed its national flag more than 20 times since 1901, reportedly more than any other country in modern history — a reflection of just how many governments have risen and fallen there.",
+    "needsReview": true
+  },
+  "AGO": {
+    "fun_fact": "This African country, despite being one of the continent's top oil producers, still imports most of its refined gasoline because it has only one working refinery.",
+    "needsReview": true
+  },
+  "AIA": {
+    "fun_fact": "This island has no rivers, lakes, or streams at all, meaning every drop of fresh water comes from rain catchment or desalination.",
+    "needsReview": true
+  },
+  "ALA": {
+    "fun_fact": "This autonomous territory belongs to Finland, though nearly everyone there speaks Swedish, and issues its own postage stamps and vehicle plates.",
+    "needsReview": true
+  },
+  "ALB": {
+    "fun_fact": "This place built over 170,000 concrete bunkers under a Cold War-era regime for a population of under 3 million — more per capita than any other country.",
+    "needsReview": true
+  },
+  "AND": {
+    "fun_fact": "This place has one of the highest life expectancies in the world, credited partly to its mountain air and highly active population.",
+    "needsReview": true
+  },
+  "ARE": {
+    "fun_fact": "This place's police force patrols in a fleet that includes a Bugatti Veyron and a Lamborghini Aventador, marketed as the world's fastest police cars.",
+    "needsReview": true
+  },
+  "ARG": {
+    "fun_fact": "This place's capital is home to 9 de Julio Avenue, often called the widest avenue on Earth — wide enough to take several traffic-light cycles to cross on foot.",
+    "needsReview": true
+  },
+  "ARM": {
+    "fun_fact": "This place was the first in the world to adopt Christianity as a state religion, in the year 301 AD.",
+    "needsReview": true
+  },
+  "ASM": {
+    "fun_fact": "This territory's residents are U.S. nationals but not U.S. citizens by birth — a unique legal status shared by no U.S. state.",
+    "needsReview": true
+  },
+  "ATA": {
+    "fun_fact": "This continent has no native population, no time zone of its own, and no country situated there, being governed instead by an international treaty.",
+    "needsReview": true
+  },
+  "ATF": {
+    "fun_fact": "This territory has no permanent residents at all, only rotating scientists stationed on its remote subantarctic islands.",
+    "needsReview": true
+  },
+  "ATG": {
+    "fun_fact": "This place's tourism board famously claims '365 beaches, one for every day of the year' — a promotional line that's stuck for decades, even though the exact count depends on how you define a beach.",
+    "needsReview": true
+  },
+  "AUS": {
+    "fun_fact": "More than a third of this place's landmass lies within the tropics, even though most of its population lives along the temperate southeastern coast.",
+    "needsReview": true
+  },
+  "AUT": {
+    "fun_fact": "The Christmas carol 'Silent Night' was written and first performed here, in a small village church in 1818.",
+    "needsReview": true
+  },
+  "AZE": {
+    "fun_fact": "This place's name is thought to mean 'land of fire,' inspired by natural gas seeps that have burned continuously from its hillsides for millennia.",
+    "needsReview": true
+  },
+  "BDI": {
+    "fun_fact": "This place is one of the least electrified on Earth, where most of its population has never had access to grid electricity.",
+    "needsReview": true
+  },
+  "BEL": {
+    "fun_fact": "This place has three official languages — Dutch, French, and German — despite being smaller than the U.S. state of Maryland.",
+    "needsReview": true
+  },
+  "BEN": {
+    "fun_fact": "This place is considered the birthplace of Vodun, which remains an officially recognized religion practiced by a large share of the population.",
+    "needsReview": true
+  },
+  "BFA": {
+    "fun_fact": "This place's name means 'land of upright/honest people,' adopted after independence to replace its colonial name, Upper Volta.",
+    "needsReview": true
+  },
+  "BGD": {
+    "fun_fact": "This place is criss-crossed by hundreds of rivers and tributaries, giving it one of the densest river networks of any country on Earth — estimates of the total range from roughly 230 major rivers up to 700 once every tributary is counted.",
+    "needsReview": true
+  },
+  "BGR": {
+    "fun_fact": "Here, people traditionally nod their head for 'no' and shake it side to side for 'yes' — the reverse of most of the world.",
+    "needsReview": true
+  },
+  "BHR": {
+    "fun_fact": "This place's name means 'two seas' in Arabic, referring to natural underground layers of fresh and salt water once found around the island.",
+    "needsReview": true
+  },
+  "BHS": {
+    "fun_fact": "This place's Exuma islands are home to a colony of wild pigs that swim out to greet passing boats, with no confirmed explanation for how they got there.",
+    "needsReview": true
+  },
+  "BIH": {
+    "fun_fact": "This place's capital is nicknamed the 'Jerusalem of Europe' for its cluster of mosques, churches, and a synagogue all within a few blocks of each other.",
+    "needsReview": true
+  },
+  "BLM": {
+    "fun_fact": "This island was a Swedish colony for nearly a century before France bought it back in 1878, its capital, Gustavia, still named for a Swedish king.",
+    "needsReview": true
+  },
+  "BLR": {
+    "fun_fact": "Nearly 40% of this place is covered in forest, home to some of the last European bison living in the wild.",
+    "needsReview": true
+  },
+  "BLZ": {
+    "fun_fact": "This is the only country in Central America where English is the official language, a legacy of British colonial rule as British Honduras.",
+    "needsReview": true
+  },
+  "BMU": {
+    "fun_fact": "This island isn't in the Caribbean at all, sitting alone in the North Atlantic over 1,000 km from the nearest Caribbean island.",
+    "needsReview": true
+  },
+  "BOL": {
+    "fun_fact": "This place has two capitals — Sucre as the constitutional capital, and La Paz, the seat of government, sitting 3,640 meters up as the highest administrative capital in the world.",
+    "needsReview": true
+  },
+  "BRA": {
+    "fun_fact": "This place shares a border with every other South American country except Chile and Ecuador.",
+    "needsReview": true
+  },
+  "BRB": {
+    "fun_fact": "This place became the world's newest republic in 2021, removing the British monarch as head of state after nearly 400 years.",
+    "needsReview": true
+  },
+  "BRN": {
+    "fun_fact": "This place's sultan has a personal car collection reportedly numbering in the thousands, funded by vast oil and gas reserves.",
+    "needsReview": true
+  },
+  "BTN": {
+    "fun_fact": "This place measures national progress with a 'Gross National Happiness' index instead of GDP, and is one of the only carbon-negative countries on Earth.",
+    "needsReview": true
+  },
+  "BWA": {
+    "fun_fact": "This place is home to more elephants than any other country on Earth, with a population estimated well over 100,000.",
+    "needsReview": true
+  },
+  "CAF": {
+    "fun_fact": "This place sits almost exactly at the geographic center of the African continent.",
+    "needsReview": true
+  },
+  "CAN": {
+    "fun_fact": "This place is home to roughly two million lakes — more than any other country on Earth, covering almost 9% of its total land area.",
+    "needsReview": true
+  },
+  "CHE": {
+    "fun_fact": "This place has enough nuclear fallout shelters to house more than 100% of its population.",
+    "needsReview": true
+  },
+  "CHL": {
+    "fun_fact": "This place stretches over 4,300 km from north to south but averages only about 175 km wide, making it one of the longest, thinnest countries on Earth.",
+    "needsReview": true
+  },
+  "CHN": {
+    "fun_fact": "This place spans five geographic time zones but uses only one official time zone nationwide.",
+    "needsReview": true
+  },
+  "CIV": {
+    "fun_fact": "This place's official capital is Yamoussoukro, even though nearly every embassy and most government activity remains in the larger city of Abidjan.",
+    "needsReview": true
+  },
+  "CMR": {
+    "fun_fact": "This place is nicknamed 'Africa in miniature' because it contains nearly every major climate and landscape on the continent, from desert to rainforest to snow-capped peaks.",
+    "needsReview": true
+  },
+  "COD": {
+    "fun_fact": "This place's principal river is the deepest in the world, plunging to depths of over 220 meters in places.",
+    "needsReview": true
+  },
+  "COG": {
+    "fun_fact": "This place's capital sits directly across the river from the capital of its similarly-named neighbor, making them the closest two capital cities to each other in the world.",
+    "needsReview": true
+  },
+  "COK": {
+    "fun_fact": "This place is self-governing in free association with New Zealand, with residents holding New Zealand citizenship despite the country issuing its own currency and stamps.",
+    "needsReview": true
+  },
+  "COL": {
+    "fun_fact": "This is the only South American country with coastlines on both the Pacific Ocean and the Caribbean Sea.",
+    "needsReview": true
+  },
+  "COM": {
+    "fun_fact": "This island nation is one of the world's largest producers of ylang-ylang, a flower essential to many high-end perfumes, earning it the nickname 'Perfume Islands'.",
+    "needsReview": true
+  },
+  "CPV": {
+    "fun_fact": "This island nation was uninhabited until Portuguese sailors settled it in the 15th century, later making it a key hub in the transatlantic slave trade.",
+    "needsReview": true
+  },
+  "CRI": {
+    "fun_fact": "This place abolished its military entirely in 1948 and has remained one of the most stable democracies in Latin America ever since.",
+    "needsReview": true
+  },
+  "CUB": {
+    "fun_fact": "This place's classic American cars from the 1950s are still driven daily, kept running for decades by mechanics who can't legally import new parts.",
+    "needsReview": true
+  },
+  "CUW": {
+    "fun_fact": "This island gave its name to the blue liqueur originally made from the dried peels of the bitter Laraha orange that grows almost nowhere else.",
+    "needsReview": true
+  },
+  "CYM": {
+    "fun_fact": "This territory has more registered companies than people, thanks to its status as one of the world's largest offshore financial centers.",
+    "needsReview": true
+  },
+  "CYP": {
+    "fun_fact": "This place has been divided since 1974 by a UN buffer zone, leaving its capital as the world's last divided capital city.",
+    "needsReview": true
+  },
+  "CZE": {
+    "fun_fact": "This place has the highest per-capita beer consumption in the world, with brewing traditions that trace back centuries to towns like Pilsen.",
+    "needsReview": true
+  },
+  "DEU": {
+    "fun_fact": "This place is home to more than 1,500 registered types of sausage, and had its bread culture — with over 3,000 documented recipes — recognized by UNESCO as Intangible Cultural Heritage in 2014.",
+    "needsReview": true
+  },
+  "DJI": {
+    "fun_fact": "This place hosts military bases from the U.S., France, China, and Japan simultaneously, all within a country smaller than Massachusetts.",
+    "needsReview": true
+  },
+  "DMA": {
+    "fun_fact": "This place, nicknamed the 'Nature Island,' is popularly said to have 365 rivers — one for every day of the year — though the exact number depends on how small a stream has to be to count.",
+    "needsReview": true
+  },
+  "DNK": {
+    "fun_fact": "This place's Lego bricks are precise enough that a brick made in 1958 still fits perfectly with one made today.",
+    "needsReview": true
+  },
+  "DOM": {
+    "fun_fact": "This place shares the island of Hispaniola with its neighbor, the only island in the world divided between two independent nations for centuries.",
+    "needsReview": true
+  },
+  "DZA": {
+    "fun_fact": "This is Africa's largest country by land area, with over 80% of it covered by the Sahara Desert.",
+    "needsReview": true
+  },
+  "ECU": {
+    "fun_fact": "Because of the equatorial bulge, the summit of this place's Mount Chimborazo is the point on Earth's surface farthest from the planet's center — farther out than Everest's peak.",
+    "needsReview": true
+  },
+  "EGY": {
+    "fun_fact": "Here, the Great Pyramid stand, having been the tallest human-made structure on Earth for almost 3,800 years — the longest such reign of any building in history.",
+    "needsReview": true
+  },
+  "ERI": {
+    "fun_fact": "This place's capital is a UNESCO World Heritage Site nicknamed 'Africa's Art Deco city' for its remarkably preserved 1930s modernist architecture.",
+    "needsReview": true
+  },
+  "ESH": {
+    "fun_fact": "This territory is Africa’s last major unresolved colonial-era territorial dispute, claimed by both a neighboring kingdom and a local independence movement.",
+    "needsReview": true
+  },
+  "ESP": {
+    "fun_fact": "This is the only country with land on both mainland Europe and mainland Africa, via its cities of Ceuta and Melilla.",
+    "needsReview": true
+  },
+  "EST": {
+    "fun_fact": "This place was the first to allow nationwide online voting and remains one of the most digitally governed societies on Earth.",
+    "needsReview": true
+  },
+  "ETH": {
+    "fun_fact": "This place runs on its own calendar, currently several years behind the Gregorian calendar, and marks the new year in September.",
+    "needsReview": true
+  },
+  "FIN": {
+    "fun_fact": "This place has more saunas than cars, with an estimated one sauna for roughly every two people.",
+    "needsReview": true
+  },
+  "FJI": {
+    "fun_fact": "This place is made up of over 330 islands, of which only about a third are permanently inhabited.",
+    "needsReview": true
+  },
+  "FLK": {
+    "fun_fact": "This territory is home to roughly 500,000 sheep, outnumbering the human population by more than 130 to 1.",
+    "needsReview": true
+  },
+  "FRA": {
+    "fun_fact": "This is the most visited country in the world, welcoming more international tourists annually than any other nation.",
+    "needsReview": true
+  },
+  "FRO": {
+    "fun_fact": "This territory has more sheep than people, its name literally translating to 'Sheep Islands'.",
+    "needsReview": true
+  },
+  "FSM": {
+    "fun_fact": "This place is spread across more than 600 islands over an expanse of Pacific roughly the size of the continental United States.",
+    "needsReview": true
+  },
+  "GAB": {
+    "fun_fact": "This place set aside roughly 11% of its land as national parkland in a single stroke in 2002, one of the highest shares of protected rainforest in the world.",
+    "needsReview": true
+  },
+  "GBR": {
+    "fun_fact": "'Big Ben' — technically just the bell inside a clock tower officially named Elizabeth Tower — stands in this place.",
+    "needsReview": true
+  },
+  "GEO": {
+    "fun_fact": "This place claims to be the birthplace of wine, with archaeological evidence of winemaking dating back roughly 8,000 years.",
+    "needsReview": true
+  },
+  "GGY": {
+    "fun_fact": "This territory issues its own banknotes and coins, even though it uses the British pound and isn't part of the United Kingdom or the EU.",
+    "needsReview": true
+  },
+  "GHA": {
+    "fun_fact": "This was the first sub-Saharan African country to gain independence from colonial rule, in 1957.",
+    "needsReview": true
+  },
+  "GIN": {
+    "fun_fact": "This place holds some of the world's largest known reserves of bauxite, the ore used to produce aluminum.",
+    "needsReview": true
+  },
+  "GMB": {
+    "fun_fact": "This is mainland Africa's smallest country, a narrow strip of land following its namesake river and almost entirely surrounded by Senegal.",
+    "needsReview": true
+  },
+  "GNB": {
+    "fun_fact": "This place's Bijagos Archipelago is one of the few places in the world where hippos are known to swim in the open ocean between islands.",
+    "needsReview": true
+  },
+  "GNQ": {
+    "fun_fact": "This is the only African country where Spanish is an official language, a legacy of Spanish colonial rule.",
+    "needsReview": true
+  },
+  "GRC": {
+    "fun_fact": "Discovering ancient ruins during construction is common enough here that major building projects can pause for years while archaeologists excavate first.",
+    "needsReview": true
+  },
+  "GRD": {
+    "fun_fact": "This place is nicknamed the 'Island of Spice' for being one of the world's largest producers of nutmeg, which even appears on its national flag.",
+    "needsReview": true
+  },
+  "GRL": {
+    "fun_fact": "This is the world's largest island, over 80% of it permanently covered by an ice sheet.",
+    "needsReview": true
+  },
+  "GTM": {
+    "fun_fact": "This place is home to over 30 volcanoes, several still active, more than any other Central American country.",
+    "needsReview": true
+  },
+  "GUM": {
+    "fun_fact": "This territory is often called 'where America's day begins,' since it sits just west of the international date line among the first U.S. territories to greet each new day.",
+    "needsReview": true
+  },
+  "GUY": {
+    "fun_fact": "This is the only English-speaking country in South America, a legacy of British colonial rule as British Guiana.",
+    "needsReview": true
+  },
+  "HKG": {
+    "fun_fact": "This territory has more skyscrapers than any other city in the world, packing thousands of tall buildings into a famously mountainous, land-scarce territory.",
+    "needsReview": true
+  },
+  "HMD": {
+    "fun_fact": "This remote territory, rarely visited more than once a decade, is home to Australia's only active volcano, nicknamed Big Ben.",
+    "needsReview": true
+  },
+  "HND": {
+    "fun_fact": "This place is home to the second-largest barrier reef system in the world, part of the Mesoamerican Reef along its Caribbean coast.",
+    "needsReview": true
+  },
+  "HRV": {
+    "fun_fact": "The necktie traces back to the scarves worn by this place's mercenaries in 17th-century France, whose name gave us the word 'cravat'.",
+    "needsReview": true
+  },
+  "HTI": {
+    "fun_fact": "This place became the first in the world founded by a successful slave revolt, declaring independence from France in 1804.",
+    "needsReview": true
+  },
+  "HUN": {
+    "fun_fact": "The Rubik's Cube was invented in 1974 by Erno Rubik, an architecture professor in the capital of this place, originally as a teaching tool for spatial reasoning.",
+    "needsReview": true
+  },
+  "IDN": {
+    "fun_fact": "This is the largest archipelago nation on Earth, having officially registered 16,056 islands with the United Nations in 2017.",
+    "needsReview": true
+  },
+  "IMN": {
+    "fun_fact": "This territory's parliament, Tynwald, has met continuously since 979 AD, making it one of the oldest continuous parliaments in the world.",
+    "needsReview": true
+  },
+  "IND": {
+    "fun_fact": "This place has more than 20 official languages and hundreds more spoken regionally, yet designates no single language as 'national' in its constitution.",
+    "needsReview": true
+  },
+  "INDIAN-OCEAN-TER": {
+    "fun_fact": "This French-administered island group hosts no permanent civilian population, only rotating military and scientific personnel.",
+    "needsReview": true
+  },
+  "IOT": {
+    "fun_fact": "This territory's Diego Garcia atoll hosts a major joint military base and has no permanent civilian residents.",
+    "needsReview": true
+  },
+  "IRL": {
+    "fun_fact": "This place is nicknamed the 'Emerald Isle' for its intensely green landscape, a product of near-constant Atlantic rainfall.",
+    "needsReview": true
+  },
+  "IRN": {
+    "fun_fact": "This place is home to one of the oldest continuous civilizations on Earth, with the Persian Empire tracing back over 2,500 years.",
+    "needsReview": true
+  },
+  "IRQ": {
+    "fun_fact": "This place sits on the land historically known as Mesopotamia, widely considered the cradle of writing, the wheel, and humanity's earliest cities.",
+    "needsReview": true
+  },
+  "ISL": {
+    "fun_fact": "This place has no standing army and no mosquitoes, one of the only places on Earth confirmed to be mosquito-free.",
+    "needsReview": true
+  },
+  "ISR": {
+    "fun_fact": "This place borders the Dead Sea, which sits at roughly 430 meters below sea level, the lowest land elevation on Earth.",
+    "needsReview": true
+  },
+  "ITA": {
+    "fun_fact": "This place has more UNESCO World Heritage Sites than any other country in the world.",
+    "needsReview": true
+  },
+  "JAM": {
+    "fun_fact": "This place was the birthplace of reggae music and produced two of the fastest sprint times ever recorded, both by the same sprinter.",
+    "needsReview": true
+  },
+  "JEY": {
+    "fun_fact": "This island's tidal range is among the largest in the world, with the sea receding far enough at low tide to walk to neighboring islets.",
+    "needsReview": true
+  },
+  "JOR": {
+    "fun_fact": "This place's ancient city of Petra was carved directly into rose-colored sandstone cliffs and remained largely unknown to the Western world until 1812.",
+    "needsReview": true
+  },
+  "JPN": {
+    "fun_fact": "This place's Geospatial Information Authority recounted its islands using modern digital mapping in 2023 and found 14,125 of them — more than double the previously cited figure of 6,800.",
+    "needsReview": true
+  },
+  "KAZ": {
+    "fun_fact": "This is the world's largest landlocked country by land area, roughly the size of Western Europe.",
+    "needsReview": true
+  },
+  "KEN": {
+    "fun_fact": "This place's Great Rift Valley is part of a tectonic split so large it's slowly pulling East Africa apart, potentially forming a new ocean over millions of years.",
+    "needsReview": true
+  },
+  "KGZ": {
+    "fun_fact": "This place is landlocked and more than 90% mountainous, one of the most vertical countries on Earth.",
+    "needsReview": true
+  },
+  "KHM": {
+    "fun_fact": "This place's Angkor Wat is the largest religious monument in the world by land area, originally built as a Hindu temple before becoming Buddhist.",
+    "needsReview": true
+  },
+  "KIR": {
+    "fun_fact": "This is the only country in the world situated in all four hemispheres — north, south, east, and west.",
+    "needsReview": true
+  },
+  "KNA": {
+    "fun_fact": "This is the smallest sovereign country in the Americas, both by area and by population.",
+    "needsReview": true
+  },
+  "KOR": {
+    "fun_fact": "This place has one of the fastest average internet speeds in the world, a legacy of aggressive early broadband investment in the late 1990s.",
+    "needsReview": true
+  },
+  "KOSOVO": {
+    "fun_fact": "This territory declared independence from Serbia in 2008 and is recognized by roughly half of UN member states, making its sovereignty one of the most contested in the world.",
+    "needsReview": true
+  },
+  "KWT": {
+    "fun_fact": "This place has one of the highest concentrations of proven oil reserves in the world relative to its small land area.",
+    "needsReview": true
+  },
+  "LAO": {
+    "fun_fact": "This is the only landlocked country in Southeast Asia, with parts of it still littered with unexploded ordnance from the Vietnam War era.",
+    "needsReview": true
+  },
+  "LBN": {
+    "fun_fact": "This place is one of the only places where you can ski in the mountains and swim in the Mediterranean on the same day.",
+    "needsReview": true
+  },
+  "LBR": {
+    "fun_fact": "This place was founded in the 19th century by freed American slaves and modeled its flag and constitution closely on those of the United States.",
+    "needsReview": true
+  },
+  "LBY": {
+    "fun_fact": "This place holds Africa's largest proven oil reserves, despite the Sahara Desert covering roughly 90% of its territory.",
+    "needsReview": true
+  },
+  "LCA": {
+    "fun_fact": "This is the only country in the world named after a woman — Saint Lucy of Syracuse.",
+    "needsReview": true
+  },
+  "LIE": {
+    "fun_fact": "This is one of only two doubly landlocked countries in the world, meaning it's surrounded entirely by other landlocked countries.",
+    "needsReview": true
+  },
+  "LKA": {
+    "fun_fact": "This place was the first in the world to elect a female head of government, Sirimavo Bandaranaike, in 1960.",
+    "needsReview": true
+  },
+  "LSO": {
+    "fun_fact": "This is the only country in the world located entirely above 1,000 meters in elevation, earning it the nickname 'Kingdom in the Sky'.",
+    "needsReview": true
+  },
+  "LTU": {
+    "fun_fact": "This place was once the largest in Europe, when its Grand Duchy stretched from the Baltic Sea nearly to the Black Sea in the 15th century.",
+    "needsReview": true
+  },
+  "LUX": {
+    "fun_fact": "This place has one of the highest GDP-per-capita figures in the world, and has offered free public transport across the entire country since 2020.",
+    "needsReview": true
+  },
+  "LVA": {
+    "fun_fact": "This place's capital has one of the largest and best-preserved collections of Art Nouveau buildings in Europe.",
+    "needsReview": true
+  },
+  "MAC": {
+    "fun_fact": "This territory generates more gambling revenue than Las Vegas, making it the largest gambling market in the world.",
+    "needsReview": true
+  },
+  "MAF": {
+    "fun_fact": "This island is split between France and the Netherlands, one of the smallest landmasses in the world shared by two sovereign nations.",
+    "needsReview": true
+  },
+  "MAR": {
+    "fun_fact": "Almost none of the classic film 'Casablanca' was actually filmed in this place's real city of the same name.",
+    "needsReview": true
+  },
+  "MCO": {
+    "fun_fact": "This is the second-smallest country in the world, yet more densely populated than any other sovereign nation.",
+    "needsReview": true
+  },
+  "MDA": {
+    "fun_fact": "This place's Milestii Mici wine cellar holds the largest wine collection in the world by bottle count, stretching over 200 km of underground tunnels.",
+    "needsReview": true
+  },
+  "MDG": {
+    "fun_fact": "This island split from mainland Africa roughly 150 million years ago, leaving over 90% of its wildlife found nowhere else on Earth.",
+    "needsReview": true
+  },
+  "MDV": {
+    "fun_fact": "This is the lowest-lying country in the world, with an average ground elevation of just 1.5 meters above sea level.",
+    "needsReview": true
+  },
+  "MEX": {
+    "fun_fact": "Chocolate, corn, tomatoes, and chili peppers all spread to the rest of the world from this place following European contact.",
+    "needsReview": true
+  },
+  "MHL": {
+    "fun_fact": "This place's Bikini Atoll was the site of 23 nuclear tests between 1946 and 1958, and remains uninhabited by its original islanders to this day.",
+    "needsReview": true
+  },
+  "MKD": {
+    "fun_fact": "This place adopted its current longer name in 2019 to resolve a decades-long naming dispute with its neighbor to the south.",
+    "needsReview": true
+  },
+  "MLI": {
+    "fun_fact": "This place's ancient city of Timbuktu was once one of the wealthiest trading centers in the world, famed for gold, salt, and a legendary library of manuscripts.",
+    "needsReview": true
+  },
+  "MLT": {
+    "fun_fact": "This place's capital is so densely packed with historic buildings that the entire city itself is listed as a single UNESCO World Heritage Site.",
+    "needsReview": true
+  },
+  "MMR": {
+    "fun_fact": "This place was known as Burma until a military government officially renamed it in 1989, a change still not recognized by every country.",
+    "needsReview": true
+  },
+  "MNE": {
+    "fun_fact": "This place's name literally means 'Black Mountain,' referencing the dark, forested peaks that dominate its coastline.",
+    "needsReview": true
+  },
+  "MNG": {
+    "fun_fact": "This is the least densely populated sovereign country on Earth, where roughly a third of the population still lives a nomadic or semi-nomadic herding lifestyle.",
+    "needsReview": true
+  },
+  "MNP": {
+    "fun_fact": "The Mariana Trench, home to the Challenger Deep — the deepest known point in all of Earth's oceans — lies near this territory.",
+    "needsReview": true
+  },
+  "MOZ": {
+    "fun_fact": "This place's coastline stretches for roughly 2,500 km along the Indian Ocean, among the longest of any African country.",
+    "needsReview": true
+  },
+  "MRT": {
+    "fun_fact": "This was the last country in the world to formally criminalize slavery, doing so in law only in 1981 and adding criminal penalties in 2007.",
+    "needsReview": true
+  },
+  "MSR": {
+    "fun_fact": "This territory's capital was buried by volcanic ash after the Soufriere Hills eruptions in the 1990s and remains an abandoned exclusion zone today.",
+    "needsReview": true
+  },
+  "MUS": {
+    "fun_fact": "This island was the only known home of the dodo bird, which went extinct within roughly a century of the island's discovery by sailors.",
+    "needsReview": true
+  },
+  "MWI": {
+    "fun_fact": "A lake in this place holds more fish species than any other lake in the world, with estimates exceeding 1,000 distinct species.",
+    "needsReview": true
+  },
+  "MYS": {
+    "fun_fact": "This place's Petronas Towers were the tallest buildings in the world when completed in 1998, and remain the tallest twin towers on Earth.",
+    "needsReview": true
+  },
+  "N-CYPRUS": {
+    "fun_fact": "This territory declared independence in 1983 and is recognized by only one UN member state, making it one of the most diplomatically isolated territories on Earth.",
+    "needsReview": true
+  },
+  "NAM": {
+    "fun_fact": "This was the first country in the world to write environmental protection directly into its constitution, in 1990.",
+    "needsReview": true
+  },
+  "NCL": {
+    "fun_fact": "This territory's lagoon is one of the largest in the world and a UNESCO World Heritage Site, home to an extraordinary diversity of marine life.",
+    "needsReview": true
+  },
+  "NER": {
+    "fun_fact": "This place is named for the river running through it, even though roughly 80% of its territory lies within the Sahara Desert.",
+    "needsReview": true
+  },
+  "NFK": {
+    "fun_fact": "This island was originally settled to grow flax and pine for the British Navy, then later used as a particularly remote penal colony.",
+    "needsReview": true
+  },
+  "NGA": {
+    "fun_fact": "This place's Nollywood film industry has for years ranked among the two or three largest in the world by number of films produced annually, often surpassing Hollywood in sheer volume.",
+    "needsReview": true
+  },
+  "NIC": {
+    "fun_fact": "This place's largest lake is one of the only freshwater lakes in the world known to contain bull sharks, which adapted to survive without salt water.",
+    "needsReview": true
+  },
+  "NIU": {
+    "fun_fact": "This is one of the world's largest coral islands, with a population small enough that nearly everyone knows each other by name.",
+    "needsReview": true
+  },
+  "NLD": {
+    "fun_fact": "About a quarter of this place sits below sea level, protected by an extensive system of dikes, dunes, and pumps.",
+    "needsReview": true
+  },
+  "NOR": {
+    "fun_fact": "This place's coastline, including all its fjords and islands, stretches over 100,000 km — long enough to circle the Earth roughly two and a half times.",
+    "needsReview": true
+  },
+  "NPL": {
+    "fun_fact": "This is the only country in the world whose national flag isn't rectangular, made instead of two stacked triangular pennants.",
+    "needsReview": true
+  },
+  "NRU": {
+    "fun_fact": "This is the smallest island nation in the world, and, for a period in the 1980s, had one of the highest per-capita incomes on Earth from phosphate mining.",
+    "needsReview": true
+  },
+  "NZL": {
+    "fun_fact": "This was the first country in the world to grant women the right to vote in parliamentary elections, in 1893.",
+    "needsReview": true
+  },
+  "OMN": {
+    "fun_fact": "This place's frankincense trade helped make the region one of the ancient world's most valuable trade routes, with the resin once worth its weight in gold.",
+    "needsReview": true
+  },
+  "PAK": {
+    "fun_fact": "This place is home to K2, the second-highest mountain on Earth, and more peaks over 8,000 meters than any country besides Nepal and China.",
+    "needsReview": true
+  },
+  "PAN": {
+    "fun_fact": "The canal in this place is one of the only places in the world where ships heading from the Atlantic to the Pacific effectively travel from northwest to southeast.",
+    "needsReview": true
+  },
+  "PCN": {
+    "fun_fact": "This territory has one of the smallest populations of any in the world, descended largely from the mutineers of HMS Bounty and their Tahitian companions.",
+    "needsReview": true
+  },
+  "PER": {
+    "fun_fact": "This place's Machu Picchu sits at over 2,400 meters and was unknown to the wider world until its 1911 rediscovery by American historian Hiram Bingham.",
+    "needsReview": true
+  },
+  "PHL": {
+    "fun_fact": "This place is made up of 7,641 islands, officially counted by the national mapping agency (NAMRIA) in 2016 — many of the smallest still uninhabited and unnamed.",
+    "needsReview": true
+  },
+  "PLW": {
+    "fun_fact": "This place's Jellyfish Lake is home to millions of jellyfish that have lost their sting over thousands of years of evolving without natural predators.",
+    "needsReview": true
+  },
+  "PNG": {
+    "fun_fact": "This is one of the most linguistically diverse places on Earth, with over 800 distinct languages spoken.",
+    "needsReview": true
+  },
+  "POL": {
+    "fun_fact": "This place's Wieliczka Salt Mine has been continuously mined since the 13th century and contains entire chapels carved out of rock salt.",
+    "needsReview": true
+  },
+  "PRI": {
+    "fun_fact": "This territory was once home to the Arecibo Observatory, for decades one of the largest radio telescopes ever built and used in the search for extraterrestrial signals.",
+    "needsReview": true
+  },
+  "PRK": {
+    "fun_fact": "This place and its neighbor to the south remain technically at war, since the 1953 war between them ended with an armistice, not a formal peace treaty.",
+    "needsReview": true
+  },
+  "PRT": {
+    "fun_fact": "This place's Age of Exploration in the 15th century helped launch the first truly global trade networks, connecting Europe, Africa, Asia, and the Americas.",
+    "needsReview": true
+  },
+  "PRY": {
+    "fun_fact": "This place generates nearly all of its domestic electricity from hydropower and is a net exporter of electricity thanks to the massive Itaipu Dam.",
+    "needsReview": true
+  },
+  "PSE": {
+    "fun_fact": "This territory is recognized by a majority of United Nations member states, though it holds only non-member observer status at the UN itself.",
+    "needsReview": true
+  },
+  "PYF": {
+    "fun_fact": "This territory's most famous island is credited as the birthplace of the overwater bungalow, a hospitality concept believed to have originated there in the 1960s.",
+    "needsReview": true
+  },
+  "QAT": {
+    "fun_fact": "This place has one of the highest GDP-per-capita figures in the world, built largely on its vast natural gas reserves.",
+    "needsReview": true
+  },
+  "ROU": {
+    "fun_fact": "This place's Sighișoara, in Transylvania, is the birthplace of Vlad the Impaler — the 15th-century Wallachian ruler whose brutal reputation inspired Dracula.",
+    "needsReview": true
+  },
+  "RUS": {
+    "fun_fact": "This place spans eleven time zones, more than any other in the world.",
+    "needsReview": true
+  },
+  "RWA": {
+    "fun_fact": "This place banned single-use plastic bags nationwide in 2008, well before most of the world began considering similar policies.",
+    "needsReview": true
+  },
+  "SAU": {
+    "fun_fact": "This place has no permanent rivers anywhere within it, one of the largest nations on Earth without a single one.",
+    "needsReview": true
+  },
+  "SDN": {
+    "fun_fact": "This place has more pyramids than Egypt, with over 200 ancient Nubian pyramids scattered across its desert.",
+    "needsReview": true
+  },
+  "SEN": {
+    "fun_fact": "This place's Lake Retba, also called Lac Rose, turns a distinctive pink color due to algae that thrive in its extremely salty water.",
+    "needsReview": true
+  },
+  "SGP": {
+    "fun_fact": "This is one of only three surviving city-states in the world, alongside Monaco and Vatican City.",
+    "needsReview": true
+  },
+  "SGS": {
+    "fun_fact": "This territory has no permanent civilian population but hosts more breeding king penguins than almost anywhere else on Earth.",
+    "needsReview": true
+  },
+  "SHN": {
+    "fun_fact": "This is one of the most remote inhabited islands in the world, and was the site of Napoleon Bonaparte's final exile until his death in 1821.",
+    "needsReview": true
+  },
+  "SIACHEN-GLACIER": {
+    "fun_fact": "This glacier, disputed between India and Pakistan, is the highest battlefield on Earth, with troops stationed at altitudes above 6,000 meters.",
+    "needsReview": true
+  },
+  "SLB": {
+    "fun_fact": "This place was the site of some of the fiercest Pacific battles of World War II, including the pivotal Battle of Guadalcanal.",
+    "needsReview": true
+  },
+  "SLE": {
+    "fun_fact": "This place's capital was founded in 1792 as a settlement for freed and formerly enslaved people, which is how the city got its name.",
+    "needsReview": true
+  },
+  "SLV": {
+    "fun_fact": "This place became the first in the world to adopt Bitcoin as legal tender, in 2021.",
+    "needsReview": true
+  },
+  "SMR": {
+    "fun_fact": "This place claims to be the oldest surviving sovereign state and constitutional republic in the world, founded, by tradition, in the year 301 AD.",
+    "needsReview": true
+  },
+  "SOM": {
+    "fun_fact": "This place has the longest coastline of any country on mainland Africa.",
+    "needsReview": true
+  },
+  "SOMALILAND": {
+    "fun_fact": "This territory declared independence from Somalia in 1991 and functions as a de facto independent state, though no UN member country formally recognizes it.",
+    "needsReview": true
+  },
+  "SPM": {
+    "fun_fact": "This territory is the last remaining piece of the once-vast territory of New France still governed by France, just off the coast of Canada.",
+    "needsReview": true
+  },
+  "SRB": {
+    "fun_fact": "This place's capital has reportedly been destroyed and rebuilt around 40 times throughout its history, owing to its position at the confluence of two major rivers — one of the most fought-over city sites in Europe.",
+    "needsReview": true
+  },
+  "SSD": {
+    "fun_fact": "This place became the world's newest in 2011, seceding from Sudan after decades of civil war.",
+    "needsReview": true
+  },
+  "STP": {
+    "fun_fact": "This is Africa's second-smallest country, its economy historically built almost entirely on cocoa production.",
+    "needsReview": true
+  },
+  "SUR": {
+    "fun_fact": "This is the smallest sovereign country in South America, with over 90% of its territory remaining covered in pristine rainforest.",
+    "needsReview": true
+  },
+  "SVK": {
+    "fun_fact": "This place is home to over 100 castles and around 400 chateaux and manor houses — one of the highest concentrations of historic fortifications in Europe, packed into a country roughly the size of Vermont and New Hampshire combined.",
+    "needsReview": true
+  },
+  "SVN": {
+    "fun_fact": "This place's capital was named European Green Capital in 2016, with more than half the city's area given over to green space.",
+    "needsReview": true
+  },
+  "SWE": {
+    "fun_fact": "This place's legal tradition of Allemansratten, the 'right to roam,' lets anyone walk, camp, or forage on almost any land, public or private.",
+    "needsReview": true
+  },
+  "SWZ": {
+    "fun_fact": "This place changed its name in 2018, when its king officially renamed it to mark 50 years of independence.",
+    "needsReview": true
+  },
+  "SXM": {
+    "fun_fact": "This island is famous for a beach right next to the runway, where jets land so low overhead that tourists gather just to feel the engine blast.",
+    "needsReview": true
+  },
+  "SYC": {
+    "fun_fact": "This place is home to the coco de mer, a palm tree that produces the largest and heaviest seed of any plant on Earth.",
+    "needsReview": true
+  },
+  "SYR": {
+    "fun_fact": "This place's capital is considered one of the oldest continuously inhabited cities in the world, with habitation dating back thousands of years.",
+    "needsReview": true
+  },
+  "TCA": {
+    "fun_fact": "This territory is home to one of the largest barrier reef systems in the world, drawing divers from across the globe.",
+    "needsReview": true
+  },
+  "TCD": {
+    "fun_fact": "This place's namesake lake has shrunk by roughly 90% since the 1960s, once one of the largest lakes in Africa and now a fraction of its former size.",
+    "needsReview": true
+  },
+  "TGO": {
+    "fun_fact": "This is one of the narrowest countries in Africa, stretching just over 50 km wide at its narrowest point.",
+    "needsReview": true
+  },
+  "THA": {
+    "fun_fact": "This is the only country in Southeast Asia never colonized by a European power.",
+    "needsReview": true
+  },
+  "TJK": {
+    "fun_fact": "This is one of the most mountainous countries in the world, with over 90% of its territory covered by mountains.",
+    "needsReview": true
+  },
+  "TKM": {
+    "fun_fact": "This place's Darvaza gas crater, nicknamed the 'Door to Hell,' has been burning in the Karakum Desert for decades — locals still debate exactly when and how it was first ignited.",
+    "needsReview": true
+  },
+  "TLS": {
+    "fun_fact": "This place became Asia's newest in 2002, after gaining full independence following decades of Indonesian and earlier Portuguese rule.",
+    "needsReview": true
+  },
+  "TON": {
+    "fun_fact": "This is the only Pacific island nation never formally colonized by a foreign power, its monarchy tracing back over a thousand years through several ruling dynasties even though the current House of Tupou has reigned only since 1875.",
+    "needsReview": true
+  },
+  "TTO": {
+    "fun_fact": "This place is the birthplace of steelpan music, invented from repurposed oil drums in the 20th century.",
+    "needsReview": true
+  },
+  "TUN": {
+    "fun_fact": "This place's desert town of Matmata, with its underground cave dwellings, was used as a filming location for Luke Skywalker's home on Tatooine in Star Wars.",
+    "needsReview": true
+  },
+  "TUR": {
+    "fun_fact": "This place's largest city straddles two continents, split by the Bosphorus Strait between Europe and Asia.",
+    "needsReview": true
+  },
+  "TWN": {
+    "fun_fact": "This economy produces the vast majority of the world's most advanced computer chips, largely through a single company, TSMC.",
+    "needsReview": true
+  },
+  "TZA": {
+    "fun_fact": "This place is home to both the highest point in Africa, Mount Kilimanjaro, and one of the continent's lowest points, the floor of Lake Tanganyika.",
+    "needsReview": true
+  },
+  "UGA": {
+    "fun_fact": "This place is home to more than half of the world's remaining mountain gorillas, primarily in its Bwindi Impenetrable Forest.",
+    "needsReview": true
+  },
+  "UKR": {
+    "fun_fact": "This place's extraordinarily fertile black soil, called chernozem, made it historically known as the 'breadbasket of Europe'.",
+    "needsReview": true
+  },
+  "URY": {
+    "fun_fact": "This was the first country in the world to fully legalize the production, sale, and use of recreational cannabis nationwide, in 2013.",
+    "needsReview": true
+  },
+  "USA": {
+    "fun_fact": "This place has no official national language at the federal level, despite English being the de facto language of government and commerce.",
+    "needsReview": true
+  },
+  "UZB": {
+    "fun_fact": "This is one of only two doubly landlocked countries in the world, meaning every country that borders it is also landlocked.",
+    "needsReview": true
+  },
+  "VAT": {
+    "fun_fact": "This is the smallest sovereign state in the world, with a population under 1,000 and its own train station, postal system, and currency.",
+    "needsReview": true
+  },
+  "VCT": {
+    "fun_fact": "This place's Wallilabou Bay was a filming location for Pirates of the Caribbean, its film-set dock structures still standing today.",
+    "needsReview": true
+  },
+  "VEN": {
+    "fun_fact": "This place's Angel Falls is the tallest uninterrupted waterfall in the world, dropping nearly 980 meters from the top of a flat-topped mountain called a tepui.",
+    "needsReview": true
+  },
+  "VGB": {
+    "fun_fact": "This territory has more registered offshore companies than people, a legacy of its role as a major international financial center.",
+    "needsReview": true
+  },
+  "VIR": {
+    "fun_fact": "This U.S. territory drives on the left side of the road, despite nearly everywhere else in the country driving on the right.",
+    "needsReview": true
+  },
+  "VNM": {
+    "fun_fact": "This is the world's second-largest coffee exporter, behind only Brazil, thanks to French colonial-era plantations that took root in its highlands.",
+    "needsReview": true
+  },
+  "VUT": {
+    "fun_fact": "This place's Mount Yasur is one of the most accessible active volcanoes on Earth, letting visitors stand near its erupting crater rim.",
+    "needsReview": true
+  },
+  "WLF": {
+    "fun_fact": "This is one of the least-visited territories on Earth, having lacked an airport capable of handling large international flights until relatively recently.",
+    "needsReview": true
+  },
+  "WSM": {
+    "fun_fact": "This place skipped December 30, 2011 entirely, jumping forward a full day to switch sides of the International Date Line and align with its main trading partners.",
+    "needsReview": true
+  },
+  "YEM": {
+    "fun_fact": "This place's Socotra archipelago is home to the alien-looking dragon's blood tree, found nowhere else on Earth and named for its deep red sap.",
+    "needsReview": true
+  },
+  "ZAF": {
+    "fun_fact": "This place has three capital cities — Pretoria, Cape Town, and Bloemfontein — each hosting a different branch of government.",
+    "needsReview": true
+  },
+  "ZMB": {
+    "fun_fact": "Victoria Falls, shared with a neighboring country and classified as the largest sheet of falling water in the world by combined height and width, straddles the border of this place.",
+    "needsReview": true
+  },
+  "ZWE": {
+    "fun_fact": "This place takes its name from a medieval stone city whose ruins are the largest ancient stone structure in sub-Saharan Africa, built entirely without mortar.",
+    "needsReview": true
+  }
+}

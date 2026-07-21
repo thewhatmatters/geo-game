@@ -63,12 +63,20 @@ for (const [code, entry] of Object.entries(geo)) {
 
   result[code] = {
     name: entry.name,
+    fun_fact: entry.fun_fact,
     path: entry.path,
     centroid: entry.centroid,
     neighbor_codes: neighborCodes,
     unique_letters: uniqueLetterCount(entry.name),
     is_island: neighborCodes.length === 0,
   };
+}
+
+const invalidFacts = Object.entries(result)
+  .filter(([, entry]) => typeof entry.fun_fact !== 'string' || entry.fun_fact.trim() === '')
+  .map(([code]) => code);
+if (invalidFacts.length > 0) {
+  throw new Error(`Missing non-empty fun_fact after metadata merge for: ${invalidFacts.join(', ')}`);
 }
 
 fs.writeFileSync(OUT_PATH, JSON.stringify(result, null, 2) + '\n');

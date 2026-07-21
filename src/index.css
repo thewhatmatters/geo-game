@@ -133,6 +133,31 @@ body {
   display: block;
 }
 
+/* Slow, low-contrast ocean shimmer. Animating only SVG stroke opacity keeps
+   it subordinate to the target's spatial draw-in and avoids any
+   requestAnimationFrame/state updates while both effects run. */
+.ocean-hatch__flow {
+  animation: ocean-hatch-shimmer 6s ease-in-out infinite alternate;
+  will-change: stroke-opacity;
+}
+
+@keyframes ocean-hatch-shimmer {
+  from {
+    stroke-opacity: 0.72;
+  }
+  to {
+    stroke-opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ocean-hatch__flow {
+    animation: none;
+    stroke-opacity: 0.86;
+    will-change: auto;
+  }
+}
+
 /* Elastic drag-to-pan snap-back — applied to the pan-only <g> wrapper
    EXCEPT while actively dragging (see App.tsx), so live drag tracking
    stays instant and only the release-to-center motion animates. */

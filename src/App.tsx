@@ -400,6 +400,8 @@ function App({ boot }: { boot: RoundBoot }) {
                 centerY={zoomOriginY}
                 revealRadius={worldLayerRevealRadius}
                 peakOpacity={worldLayerPeakOpacity}
+                zoom={round.zoom}
+                worldUnitsPerPixel={scene.pxScale}
               />
               {scene.targetBoost > 1 && (
                 <defs>

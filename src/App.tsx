@@ -15,6 +15,7 @@ import { getAllCountries } from "./lib/game/dailyCountry";
 import { isSolveStatus, useGameRound } from "./lib/game/useGameRound";
 import type { DisplayChar } from "./lib/game/useGameRound";
 import type { RoundBoot } from "./lib/game/boot";
+import { ROUND_DURATION_SECONDS } from "./lib/game/round";
 import { ZOOM_MIN, ZOOM_SENSITIVITY, ZOOM_STEP, zoomStepsCrossed } from "./lib/game/zoom";
 import { clampWorldCenterY, worldExtentY } from "./lib/geo/scene";
 import { viewBoxSize } from "./lib/geo/pathBounds";
@@ -554,7 +555,16 @@ function App({ boot }: { boot: RoundBoot }) {
               off the map entirely — white text over the white outline
               strokes was unreadable when this was centered on the target. */}
           <div className="solve-panel">
-            <TriviaOverlay code={daily.targetCode} />
+            <TriviaOverlay
+              code={daily.targetCode}
+              /* After the round ends, treat the clock as fully elapsed so a
+                 delayed fun-fact reveal still stays readable with the question. */
+              elapsedSeconds={
+                round.status === "running"
+                  ? ROUND_DURATION_SECONDS - round.remainingSeconds
+                  : ROUND_DURATION_SECONDS
+              }
+            />
             <AnswerDisplay words={splitIntoWordGroups(round.displayChars)} guesses={round.guesses} />
             <span className="solve-panel__connector" aria-hidden="true" />
             <Keyboard

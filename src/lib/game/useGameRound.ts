@@ -11,7 +11,7 @@ import {
   inLockout,
 } from "./round";
 import { computeScore } from "./score";
-import type { DisplayChar, LetterState, RoundStatus, ScoreEvent } from "./round";
+import type { DisplayChar, LetterState, RoundState, RoundStatus, ScoreEvent } from "./round";
 
 // Re-exported so existing consumers keep one import site for the round's
 // public vocabulary.
@@ -20,6 +20,37 @@ export { HINT_ONSET_FRACTION, LOCKOUT_ATTEMPT_BUDGET, isSolveStatus } from "./ro
 
 /** How often the real-time ticker samples the wall clock. The reducer receives the measured delta, so a late tick loses no time. */
 const TICK_INTERVAL_MS = 200;
+const RESULT_KEY_PREFIX = "geo:round-result:";
+
+/** Terminal snapshots make a completed date idempotent before the richer
+ * outcome ledger lands: revisiting it restores the result instead of replaying. */
+export function readRecordedRound(
+  date: string,
+  target: Country,
+  zoomMax: number,
+  storage: Pick<Storage, "getItem"> = localStorage,
+): RoundState {
+  const fresh = createRound(target, zoomMax);
+  try {
+    const raw = storage.getItem(`${RESULT_KEY_PREFIX}${date}`);
+    if (!raw) return fresh;
+    const saved = JSON.parse(raw) as RoundState;
+    if (saved.targetName !== target.name || saved.status === "running") return fresh;
+    return { ...saved, zoomMax };
+  } catch {
+    return fresh;
+  }
+}
+
+export function recordCompletedRound(
+  date: string,
+  state: RoundState,
+  storage: Pick<Storage, "setItem"> = localStorage,
+): void {
+  if (state.status !== "running") {
+    storage.setItem(`${RESULT_KEY_PREFIX}${date}`, JSON.stringify(state));
+  }
+}
 
 export interface GameRound {
   status: RoundStatus;
@@ -64,8 +95,16 @@ export interface GameRound {
  * stable (dispatch is stable), so callers can safely list them in effect
  * dependency arrays.
  */
-export function useGameRound(target: Country, zoomMax: number): GameRound {
-  const [state, dispatch] = useReducer(reduceRound, undefined, () => createRound(target, zoomMax));
+export function useGameRound(target: Country, zoomMax: number, date: string): GameRound {
+  const [state, dispatch] = useReducer(
+    reduceRound,
+    undefined,
+    () => readRecordedRound(date, target, zoomMax),
+  );
+
+  useEffect(() => {
+    recordCompletedRound(date, state);
+  }, [date, state]);
 
   // Real-time driver: samples elapsed wall-clock time and dispatches the
   // measured delta. Stops itself when the round ends (status change re-runs

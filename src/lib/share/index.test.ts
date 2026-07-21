@@ -4,12 +4,13 @@ import type { ShareInput } from "./index";
 
 describe("getDayNumber", () => {
   it("returns 1 on the launch date", () => {
-    expect(getDayNumber(new Date(`${LAUNCH_DATE}T12:00:00Z`))).toBe(1);
+    expect(getDayNumber(LAUNCH_DATE)).toBe(1);
   });
 
-  it("increments by 1 per UTC calendar day", () => {
-    expect(getDayNumber(new Date("2026-07-12T00:00:00Z"))).toBe(2);
-    expect(getDayNumber(new Date("2026-07-21T23:59:59Z"))).toBe(11);
+  it("uses DST-proof local-calendar epoch math", () => {
+    expect(getDayNumber("2026-07-12")).toBe(2);
+    expect(getDayNumber("2026-07-21")).toBe(11);
+    expect(getDayNumber("2027-07-11")).toBe(366);
   });
 });
 

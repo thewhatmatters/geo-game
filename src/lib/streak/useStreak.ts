@@ -10,7 +10,7 @@ import type { StreakState } from "./index";
  * against the puzzle's day, not the wall clock at solve time, so a round
  * that straddles midnight still credits the day whose puzzle was solved.
  */
-export function useStreak(date: Date) {
+export function useStreak(date: string) {
   const [streak, setStreak] = useState<StreakState>(() => readStreak());
 
   const recordOutcome = useCallback(

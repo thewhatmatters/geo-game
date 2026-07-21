@@ -241,8 +241,8 @@
         "Typecheck passes"
       ],
       "priority": 14,
-      "passes": false,
-      "notes": "src/lib/game/dailyCountry.ts + boot.ts. Everything in M3 keys off local dates - this must land first."
+      "passes": true,
+      "notes": "Implemented through the boot seam. Fixed local-date epoch: 2026-07-11, preserving GEO #11 on the 2026-07-21 cutover via (local calendar date - epoch) + 1. UTC is used only for DST-proof subtraction of already-resolved calendar strings, never to choose today's date. Clean flip with no UTC migration shim."
     },
     {
       "id": "US-015",

@@ -1,18 +1,24 @@
-import { toUtcDateString } from "../streak";
 import { isSolveStatus } from "../game/round";
 import type { LetterState, RoundStatus } from "../game/round";
 
 /**
- * Placeholder v1 launch date — day numbering starts at 1 on this UTC date.
- * No real launch date exists yet (PRD leaves this unspecified); update this
- * constant once the game actually ships.
+ * Fixed local-calendar epoch. On the 2026-07-21 UTC→local cutover this keeps
+ * the public sequence at GEO #11: (July 21 - July 11) + 1 = 11. Calendar
+ * strings are converted through Date.UTC solely to perform DST-proof date
+ * subtraction; UTC is not used to decide which date the device is on.
  */
-export const LAUNCH_DATE = "2026-07-11";
+export const LOCAL_DATE_EPOCH = "2026-07-11";
+export const LAUNCH_DATE = LOCAL_DATE_EPOCH;
 
-/** Day number is 1-indexed, counting UTC calendar days since LAUNCH_DATE. */
-export function getDayNumber(date: Date): number {
-  const launchMs = new Date(`${LAUNCH_DATE}T00:00:00Z`).getTime();
-  const currentMs = new Date(`${toUtcDateString(date)}T00:00:00Z`).getTime();
+function calendarDateMs(date: string): number {
+  const [year, month, day] = date.split("-").map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+/** Day number is 1-indexed, counting local calendar dates since the epoch. */
+export function getDayNumber(date: string): number {
+  const launchMs = calendarDateMs(LOCAL_DATE_EPOCH);
+  const currentMs = calendarDateMs(date);
   return Math.round((currentMs - launchMs) / (1000 * 60 * 60 * 24)) + 1;
 }
 

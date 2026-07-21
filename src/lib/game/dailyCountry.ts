@@ -49,10 +49,6 @@ function hashString(input: string): number {
   return hash >>> 0;
 }
 
-function toUtcDateString(date: Date): string {
-  return date.toISOString().slice(0, 10); // YYYY-MM-DD, UTC
-}
-
 /**
  * Neighbor slots are always fixed at 3 (see CLAUDE.md). When a country has
  * more than 3 land neighbors, the PRD leaves the exact selection rule
@@ -79,12 +75,11 @@ export function selectNeighborSubset(
 
 /**
  * Deterministically picks today's target country and its neighbor subset
- * from a UTC calendar date: hash(UTC date) mod country_count. Identical
+ * from an already-resolved calendar date: hash(YYYY-MM-DD) mod country_count. Identical
  * input always yields identical output, so every player sees the same
  * puzzle on the same day.
  */
-export function getDailyCountry(date: Date): DailySelection {
-  const dateString = toUtcDateString(date);
+export function getDailyCountry(dateString: string): DailySelection {
   const targetIndex = hashString(dateString) % countryCodes.length;
   const targetCode = countryCodes[targetIndex];
   const target = countries[targetCode];

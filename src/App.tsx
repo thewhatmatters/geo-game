@@ -171,7 +171,7 @@ function App({ boot }: { boot: RoundBoot }) {
     [daily],
   );
 
-  const round = useGameRound(daily.target, scene.maxZoom);
+  const round = useGameRound(daily.target, scene.maxZoom, boot.date);
   const { streak, recordOutcome } = useStreak(boot.date);
   const recordedRef = useRef(false);
   const outlineRef = useRef<HTMLDivElement>(null);

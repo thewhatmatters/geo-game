@@ -223,9 +223,8 @@ function App({ boot }: { boot: RoundBoot }) {
   useEffect(() => {
     if (round.status === "running" || recordedRef.current) return;
     recordedRef.current = true;
-    // A late solve still counts for the streak — locked_out and gave_up don't.
-    recordOutcome(isSolveStatus(round.status) ? "solved" : "failed");
-  }, [round.status, recordOutcome]);
+    recordOutcome(round.status, round.score, daily.targetCode);
+  }, [round.status, round.score, daily.targetCode, recordOutcome]);
 
   // Fires exactly once per round, only on a genuine solve (not on give-up/
   // timeout) — recordedRef above already guards the transition, so this

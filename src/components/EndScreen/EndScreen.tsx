@@ -43,6 +43,12 @@ export interface EndScreenProps {
   shareString: string;
   /** Act 2 — consecutive days solved (see lib/streak). */
   currentStreak: number;
+  /** Act 2 — banked streak freezes (US-016). */
+  freezes: number;
+  /** Kind notice: freeze covered / earned / streak ended. */
+  noticeMessage?: string | null;
+  /** One-line freeze rule (Duolingo-style explainer). */
+  freezeRuleCopy?: string;
 }
 
 function formatAmount(amount: number): string {
@@ -84,6 +90,9 @@ export function EndScreen({
   dayNumber,
   shareString,
   currentStreak,
+  freezes,
+  noticeMessage = null,
+  freezeRuleCopy,
 }: EndScreenProps) {
   const breakdown = useMemo(
     () =>
@@ -209,15 +218,35 @@ export function EndScreen({
                 : "COPY"}
           </button>
 
-          {/* Stats strip — one cell today (streak). Freeze, the heatmap and
-              the played-countries map are following stories; the grid is
-              auto-fit so they slot in as siblings without a relayout. */}
+          {/* Stats strip — streak + freezes. Heatmap / map arrive later;
+              auto-fill grid keeps room for them. */}
           <div className="end-screen__stats" data-testid="end-screen-stats">
             <div className="end-screen__stat" data-testid="end-screen-streak">
               <span className="end-screen__stat-label">STREAK</span>
               <span className="end-screen__stat-value">{currentStreak}</span>
             </div>
+            <div className="end-screen__stat" data-testid="end-screen-freezes">
+              <span className="end-screen__stat-label">FREEZES</span>
+              <span className="end-screen__stat-value">
+                <span className="end-screen__freeze-icon" aria-hidden="true">
+                  ❄
+                </span>
+                {freezes}
+              </span>
+            </div>
           </div>
+
+          {noticeMessage ? (
+            <p className="end-screen__notice" data-testid="streak-notice">
+              {noticeMessage}
+            </p>
+          ) : null}
+
+          {freezeRuleCopy ? (
+            <p className="end-screen__freeze-rule" data-testid="freeze-rule">
+              {freezeRuleCopy}
+            </p>
+          ) : null}
 
           <p className="end-screen__countdown" data-testid="next-round-countdown">
             <span className="end-screen__stat-label">NEXT DROP</span>

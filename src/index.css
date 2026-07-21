@@ -144,7 +144,14 @@ body {
    bottom-right anymore: that pinned it directly over the on-screen
    keyboard's bottom row on phone-height viewports (the keyboard's own
    height varies and was never accounted for). The top corners always
-   have free space regardless of round state. */
+   have free space regardless of round state.
+
+   Deliberately RECESSED (US-006): these are utility controls, not the
+   game, so they sit at reduced opacity with a hairline/translucent
+   treatment instead of the raised white keycap look the keyboard uses —
+   the score readout opposite them and the question below must both read
+   louder. They stay fully usable: a 40px tap target, and hover/focus (or
+   any pointer inside the cluster) brings them back to full contrast. */
 .zoom-controls {
   position: fixed;
   left: 1rem;
@@ -152,42 +159,70 @@ body {
   z-index: 1;
   display: flex;
   flex-direction: row;
-  gap: 0.4rem;
+  gap: 0.35rem;
   pointer-events: auto;
+  opacity: 0.55;
+  transition: opacity 0.18s ease;
 }
 
-/* Self-contained live-score surface (US-005). Fixed top-right for now;
-   US-006 owns final placement, so everything the readout needs — value,
-   multiplier badge, and the popup column — is anchored inside this one
-   positioned box and moves as a unit. */
+.zoom-controls:hover,
+.zoom-controls:focus-within {
+  opacity: 1;
+}
+
+/* Self-contained live-score surface (US-005), given top-billing typography
+   in US-006: everything the readout needs — label, value, multiplier badge,
+   and the popup column — is anchored inside this one positioned box and
+   moves as a unit. Right-aligned column so the numeral's right edge stays
+   pinned as digits come and go. */
 .score-readout {
   position: fixed;
-  top: 1rem;
+  top: 0.85rem;
   right: 1rem;
   z-index: 1;
   display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  font-size: 1.1rem;
-  font-weight: 600;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  font-family: "Geist Mono", monospace;
+  line-height: 1;
+  text-shadow: 0 0 14px rgba(0, 0, 0, 0.95);
 }
 
+.score-readout__label {
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.score-readout__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+/* tabular-nums so a ticking score doesn't jitter its own left edge. */
 .score-readout__value {
   white-space: nowrap;
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Only mounted when the combo is actually boosting (> x1), so its mere
    presence is the "visually distinct above x1" signal — reinforced with a
-   pill and monochrome accent (theme guardrails: no color that isn't
-   green-positive / red-negative on the popups). */
+   pill in the app's single green accent (the same green the correct keys
+   use; red stays reserved for negative score events). */
 .score-readout__multiplier {
-  padding: 0.05rem 0.4rem;
+  padding: 0.1rem 0.4rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
+  background: rgba(76, 175, 80, 0.18);
+  color: #4caf50;
   font-size: 0.95rem;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.2;
   letter-spacing: 0.02em;
   animation: score-multiplier-pop 0.25s ease-out;
 }
@@ -259,43 +294,67 @@ body {
 }
 
 .zoom-controls__button {
-  width: 2.75rem;
-  height: 2.75rem;
-  border: none;
-  border-radius: 10px;
-  background: #f2f2f2;
-  color: #111;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.72);
   font-family: "Geist Mono", monospace;
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   font-weight: 400;
   line-height: 1;
   cursor: pointer;
-  box-shadow:
-    0 0 0 1px #d6d6d6,
-    0 3px 6px rgba(120, 120, 120, 0.4),
-    inset 0 0 0 1px rgba(0, 0, 0, 0.08),
-    inset 0 -6px 6px -3px rgba(0, 0, 0, 0.16);
+  box-shadow: none;
+}
+
+.zoom-controls__button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
 }
 
 .zoom-controls__button:disabled {
   cursor: default;
-  opacity: 0.4;
-  box-shadow: none;
+  opacity: 0.35;
+}
+
+/* Question → answer slots → keyboard as one deliberate unit (US-006). The
+   question is no longer a caption floating above unrelated chrome: it caps
+   a single centered column whose rhythm tightens downward (question, then
+   slots, then a hairline connector into the keyboard that fills them). The
+   column is capped narrower than .app__bottom so the question's line length
+   stays readable and its width visibly relates to the keyboard's. */
+.solve-panel {
+  width: min(100%, 34rem);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Short vertical hairline between the answer slots and the keyboard — the
+   one piece of pure connective tissue on the surface, saying "this input
+   fills those slots" without a box or a label. */
+.solve-panel__connector {
+  width: 1px;
+  height: 0.85rem;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.08));
 }
 
 .trivia-overlay {
-  /* Caption above the name blanks — secondary chrome, not a card. No
-     solid fill/border; legibility comes from the bottom scrim + a soft
-     text halo so map strokes never punch through the type. */
+  /* The question, promoted (US-006): brighter and larger than the old
+     caption treatment, since it and the score are the two loudest elements
+     after the map. Still no card — legibility comes from the bottom scrim
+     + a soft text halo so map strokes never punch through the type. */
   width: min(88vw, 28rem);
-  margin: 0 auto 0.55rem;
+  margin: 0 auto 0.7rem;
   padding: 0;
-  font-size: 0.92rem;
-  font-weight: 400;
-  line-height: 1.45;
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.4;
   letter-spacing: 0.01em;
   text-align: center;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.95);
   text-shadow:
     0 0 12px rgba(0, 0, 0, 0.95),
     0 1px 2px rgba(0, 0, 0, 0.9);
@@ -309,15 +368,91 @@ body {
    here beyond what the SVG elements set inline (currentColor, computed
    font-size). */
 
+/* Masthead, deliberately quiet (US-006): the wordmark and streak are
+   identity, not gameplay, so they read as a small mono kicker above the
+   clock rather than competing with the score and the question. */
+.app__top h1 {
+  font-family: "Geist Mono", monospace;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 0.2rem;
+  /* Balances the letter-spacing's trailing gap so the word stays optically
+     centered under the clock. */
+  text-indent: 0.34em;
+}
+
 .streak {
-  font-size: 0.9rem;
-  color: #999;
-  margin: 0 0 0.25rem;
+  font-family: "Geist Mono", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.42);
+  margin: 0 0 0.5rem;
 }
 
 .clock {
   display: flex;
   justify-content: center;
+}
+
+/* 0:00 lockout banner (US-006) — sits directly under the clock it replaces
+   as the round's pacer. Mono, uppercase, intrusion-log cadence; monochrome
+   (red stays reserved for negative score events). */
+.lockout {
+  margin-top: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  animation: lockout-in 0.3s ease-out;
+}
+
+.lockout__pips {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.lockout__pip {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.lockout__pip--live {
+  background: #fff;
+  box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0.45);
+}
+
+/* Spent attempts go hollow and dim rather than disappearing — the budget's
+   full size stays legible at a glance. */
+.lockout__pip--spent {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.lockout__label {
+  margin: 0;
+  font-family: "Geist Mono", monospace;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 0 12px rgba(0, 0, 0, 0.95);
+  white-space: nowrap;
+}
+
+@keyframes lockout-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Arcade-scoreboard dot-matrix panel — a dark bezel around per-digit dot
@@ -365,38 +500,37 @@ body {
    floating boxes. */
 .display-name__group {
   display: flex;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.38);
   border-radius: 8px;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .display-name__cell {
   min-width: 1.75rem;
-  height: 2.25rem;
+  height: 2.35rem;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: "Geist Mono", monospace;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 500;
-  border-right: 1px solid rgba(255, 255, 255, 0.25);
+  border-right: 1px solid rgba(255, 255, 255, 0.38);
 }
 
 .display-name__cell:last-child {
   border-right: none;
 }
 
-.round-outcome {
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
+/* The keyboard is the bottom of the .solve-panel stack, so its top spacing
+   is the connector's job now — the old 1rem gap made it read as a separate
+   block from the slots it fills. */
 .keyboard {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
 }
 
 .keyboard__row {
@@ -510,16 +644,42 @@ body {
     padding: 0.75rem 1rem;
   }
 
-  /* No base h1 rule exists — desktop uses the UA default (2em + ~0.67em
-     margins, ~75px of panel height); phones can't afford that. */
+  /* The mono wordmark is already small; only its trailing margin needs
+     trimming on a short viewport. */
   .app__top h1 {
-    font-size: 1.5rem;
-    margin: 0 0 0.25rem;
+    font-size: 0.72rem;
+    margin: 0 0 0.15rem;
   }
 
+  .streak {
+    margin-bottom: 0.35rem;
+  }
+
+  /* Shrinks with the panel but stays clearly above the receded zoom
+     controls in the hierarchy. */
   .trivia-overlay {
-    margin-bottom: 0.4rem;
-    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  /* Keeps the readout's numeral dominant without letting a 5-digit score
+     crowd the clock at 390px. */
+  .score-readout__value {
+    font-size: 1.45rem;
+  }
+
+  .zoom-controls__button {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .lockout {
+    margin-top: 0.4rem;
+  }
+
+  .lockout__label {
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
   }
 
   .display-name {
@@ -531,13 +691,17 @@ body {
      ~30px-tall row; verified 1.4rem still wraps there. */
   .display-name__cell {
     min-width: 1.3rem;
-    height: 1.9rem;
-    font-size: 1rem;
+    height: 2rem;
+    font-size: 1.1rem;
   }
 
   .keyboard {
-    margin-top: 0.6rem;
+    margin-top: 0.35rem;
     gap: 0.25rem;
+  }
+
+  .solve-panel__connector {
+    height: 0.6rem;
   }
 
   .give-up {

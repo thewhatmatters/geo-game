@@ -106,7 +106,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Suggested skills: automate-browser, build-ui, audit-ui. Theme guardrails in prd-geo-round-2.md 'Solution > M2' are binding: no green-rain, no CRT/scanline filters, single green accent."
     },
     {

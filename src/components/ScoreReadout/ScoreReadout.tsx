@@ -81,12 +81,19 @@ export function ScoreReadout({ score, multiplier, scoreEvent }: ScoreReadoutProp
 
   return (
     <div className="score-readout" data-testid="score-display">
-      <span className="score-readout__value">Score: {score}</span>
-      {boosted && (
-        <span className="score-readout__multiplier" data-testid="score-multiplier">
-          ×{multiplier}
-        </span>
-      )}
+      {/* Label + big numeral rather than an inline "Score: 1240" run: the
+          readout is one of the two loudest things on the round surface after
+          the map (US-006), so the number carries the weight and the word
+          shrinks to a quiet intrusion-log kicker above it. */}
+      <span className="score-readout__label">SCORE</span>
+      <span className="score-readout__row">
+        <span className="score-readout__value">{score}</span>
+        {boosted && (
+          <span className="score-readout__multiplier" data-testid="score-multiplier">
+            ×{multiplier}
+          </span>
+        )}
+      </span>
       {/* aria-hidden: the popups are a transient decorative echo of a change
           the score value itself already reflects — announcing each one would
           just spam a screen reader. */}

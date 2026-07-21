@@ -7,9 +7,9 @@ import { CountryPath } from "./components/CountryOutline";
 import { NeighborsLayer } from "./components/NeighborsLayer";
 import { WorldMapLayer } from "./components/WorldMapLayer";
 import { TriviaOverlay } from "./components/TriviaOverlay";
-import { ShareResult } from "./components/ShareResult";
 import { DotMatrixNumber } from "./components/DotMatrixNumber";
 import { ScoreReadout } from "./components/ScoreReadout";
+import { LockoutStrip } from "./components/LockoutStrip";
 import { getAllCountries } from "./lib/game/dailyCountry";
 import { isSolveStatus, useGameRound } from "./lib/game/useGameRound";
 import type { DisplayChar } from "./lib/game/useGameRound";
@@ -18,7 +18,6 @@ import { ZOOM_MIN, ZOOM_SENSITIVITY, ZOOM_STEP, zoomStepsCrossed } from "./lib/g
 import { clampWorldCenterY, worldExtentY } from "./lib/geo/scene";
 import { viewBoxSize } from "./lib/geo/pathBounds";
 import { useStreak } from "./lib/streak/useStreak";
-import { generateShareString } from "./lib/share";
 
 // Desired on-screen sizes (px) for the target outline stroke and neighbor
 // labels, converted to viewBox user-units via the scene's pxScale so they
@@ -150,7 +149,10 @@ function clampPan(
 }
 
 function App({ boot }: { boot: RoundBoot }) {
-  const { daily, scene, dayNumber } = boot;
+  // dayNumber deliberately isn't destructured here: the day number rode on
+  // the round surface's outcome strip, which US-006 removed — it comes back
+  // inside the end screen (US-012/US-013), which reads it from boot itself.
+  const { daily, scene } = boot;
 
   // Center of the scene's viewBox — zooming out scales the map content
   // around this fixed point, so the target stays centered regardless of
@@ -346,17 +348,6 @@ function App({ boot }: { boot: RoundBoot }) {
   const worldLayerRevealRadius = viewBoxSize(scene.viewBox) * round.zoom * (0.5 + zoomProgress);
 
 
-  const shareString = useMemo(() => {
-    if (round.status === "running") return null;
-    return generateShareString({
-      dayNumber,
-      status: isSolveStatus(round.status) ? "solved" : "failed",
-      remainingSeconds: round.remainingSeconds,
-      guesses: round.guesses,
-      targetName: daily.target.name,
-    });
-  }, [round.status, round.remainingSeconds, round.guesses, dayNumber, daily.target.name]);
-
   return (
     <>
       {/* A fixed, full-viewport backdrop, kept as a sibling (not a child)
@@ -534,6 +525,9 @@ function App({ boot }: { boot: RoundBoot }) {
             the target actually renders — completely unobstructed. Seeing
             the outline clearly is the whole point of the game. */}
         <div className="app__top" ref={topPanelRef}>
+          {/* Wordmark + streak read as a quiet masthead: they're identity,
+              not gameplay, so they sit below the score readout and the
+              question in the hierarchy (US-006). */}
           <h1>Geo</h1>
           <p className="streak" data-testid="streak">
             Streak: {streak.current_streak} (best {streak.longest_streak})
@@ -541,35 +535,44 @@ function App({ boot }: { boot: RoundBoot }) {
           <div className="clock" data-testid="clock">
             <DotMatrixNumber value={Math.ceil(round.remainingSeconds)} />
           </div>
+          {/* Only once the clock has actually hit 0:00 — the pips ARE the
+              replacement pacer from that point on (see LockoutStrip). */}
+          {round.inLockout && round.status === "running" && (
+            <LockoutStrip attemptsRemaining={round.lockoutAttemptsRemaining} />
+          )}
         </div>
         {/* Pinned to the bottom edge, same reasoning. */}
         <div className="app__bottom" ref={bottomPanelRef}>
-          {/* Sits above the blanks, off the map entirely — previously
-              centered over the outline itself, where white text on the
-              white outline lines was hard to read. */}
-          <TriviaOverlay code={daily.targetCode} />
-          <div className="display-name" data-testid="display-name">
-            {splitIntoWordGroups(round.displayChars).map((word, wordIndex) => (
-              <div className="display-name__group" key={wordIndex}>
-                {word.map((displayChar, charIndex) => (
-                  <span className="display-name__cell" key={charIndex}>
-                    {displayChar.revealed ? displayChar.char : ""}
-                  </span>
-                ))}
-              </div>
-            ))}
+          {/* Question → answer slots → keyboard is ONE unit (.solve-panel):
+              the question sits directly on top of the slots it's asking
+              about, and a short hairline connector runs from the slots into
+              the keyboard that fills them, so nothing in the stack reads as
+              floating between unrelated chrome (US-006). Everything here is
+              off the map entirely — white text over the white outline
+              strokes was unreadable when this was centered on the target. */}
+          <div className="solve-panel">
+            <TriviaOverlay code={daily.targetCode} />
+            <div className="display-name" data-testid="display-name">
+              {splitIntoWordGroups(round.displayChars).map((word, wordIndex) => (
+                <div className="display-name__group" key={wordIndex}>
+                  {word.map((displayChar, charIndex) => (
+                    <span className="display-name__cell" key={charIndex}>
+                      {displayChar.revealed ? displayChar.char : ""}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <span className="solve-panel__connector" aria-hidden="true" />
+            <Keyboard
+              guesses={round.guesses}
+              onGuess={round.guessLetter}
+              disabled={round.status !== "running"}
+            />
           </div>
-          {round.status !== "running" && (
-            <p className="round-outcome" data-testid="round-outcome">
-              {isSolveStatus(round.status) ? "Solved!" : "Failed"}
-            </p>
-          )}
-          {shareString && <ShareResult shareString={shareString} />}
-          <Keyboard
-            guesses={round.guesses}
-            onGuess={round.guessLetter}
-            disabled={round.status !== "running"}
-          />
+          {/* The outcome strip and the share/copy block that used to sit
+              here are gone from the round surface — outcome, day number and
+              the copy action all move into the end screen (US-012/US-013). */}
           <button
             type="button"
             className="give-up"

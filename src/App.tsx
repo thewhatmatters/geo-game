@@ -11,6 +11,7 @@ import { DotMatrixNumber } from "./components/DotMatrixNumber";
 import { ScoreReadout } from "./components/ScoreReadout";
 import { LockoutStrip } from "./components/LockoutStrip";
 import { AnswerDisplay } from "./components/AnswerDisplay";
+import { EndScreen } from "./components/EndScreen";
 import { getAllCountries } from "./lib/game/dailyCountry";
 import { isSolveStatus, useGameRound } from "./lib/game/useGameRound";
 import type { DisplayChar } from "./lib/game/useGameRound";
@@ -151,10 +152,7 @@ function clampPan(
 }
 
 function App({ boot }: { boot: RoundBoot }) {
-  // dayNumber deliberately isn't destructured here: the day number rode on
-  // the round surface's outcome strip, which US-006 removed — it comes back
-  // inside the end screen (US-012/US-013), which reads it from boot itself.
-  const { daily, scene } = boot;
+  const { daily, scene, dayNumber } = boot;
 
   // Center of the scene's viewBox — zooming out scales the map content
   // around this fixed point, so the target stays centered regardless of
@@ -305,14 +303,14 @@ function App({ boot }: { boot: RoundBoot }) {
   }
 
   // .app__top and .app__bottom are pinned to opposite viewport edges, but
-  // aren't the same height (the bottom panel grows once the round ends —
-  // round-outcome + share result get added on top of the keyboard). The
-  // map itself is geometrically centered in the full viewport, so unequal
-  // panel heights push the actually-clear viewing gap between them off
-  // that center. Measure both panels and shift the map by half the
-  // difference so it's centered in the CLEAR gap, not the raw viewport.
-  // Re-measures on round.status change (bottom panel content changes) and
-  // on window resize (text can wrap differently).
+  // aren't the same height (the bottom panel shrinks once the round ends —
+  // keyboard leaves, EndScreen overlays separately). The map itself is
+  // geometrically centered in the full viewport, so unequal panel heights
+  // push the actually-clear viewing gap between them off that center.
+  // Measure both panels and shift the map by half the difference so it's
+  // centered in the CLEAR gap, not the raw viewport. Re-measures on
+  // round.status change (bottom panel content changes) and on window
+  // resize (text can wrap differently).
   useLayoutEffect(() => {
     function recomputeOffset() {
       const topH = topPanelRef.current?.getBoundingClientRect().height ?? 0;
@@ -566,24 +564,24 @@ function App({ boot }: { boot: RoundBoot }) {
               }
             />
             <AnswerDisplay words={splitIntoWordGroups(round.displayChars)} guesses={round.guesses} />
-            <span className="solve-panel__connector" aria-hidden="true" />
-            <Keyboard
-              guesses={round.guesses}
-              onGuess={round.guessLetter}
-              disabled={round.status !== "running"}
-            />
+            {/* Keyboard + give-up leave the surface once the round ends —
+                Act 1's score recap takes that space (EndScreen below). */}
+            {round.status === "running" && (
+              <>
+                <span className="solve-panel__connector" aria-hidden="true" />
+                <Keyboard
+                  guesses={round.guesses}
+                  onGuess={round.guessLetter}
+                  disabled={false}
+                />
+              </>
+            )}
           </div>
-          {/* The outcome strip and the share/copy block that used to sit
-              here are gone from the round surface — outcome, day number and
-              the copy action all move into the end screen (US-012/US-013). */}
-          <button
-            type="button"
-            className="give-up"
-            onClick={round.giveUp}
-            disabled={round.status !== "running"}
-          >
-            Give up
-          </button>
+          {round.status === "running" && (
+            <button type="button" className="give-up" onClick={round.giveUp}>
+              Give up
+            </button>
+          )}
         </div>
         {/* Fixed corner cluster, independent of the top/bottom panel flow —
             one click crosses the same ZOOM_STEP as one scroll/pinch step
@@ -610,6 +608,17 @@ function App({ boot }: { boot: RoundBoot }) {
             −
           </button>
         </div>
+        {/* Act 1 end screen — any terminal outcome. Confetti still fires
+            from the solve effect above (once, solved|solved_late only). */}
+        {round.status !== "running" && (
+          <EndScreen
+            status={round.status}
+            eventScore={round.eventScore}
+            scoreEvents={round.scoreEvents}
+            remainingSeconds={round.remainingSeconds}
+            dayNumber={dayNumber}
+          />
+        )}
       </div>
     </>
   );

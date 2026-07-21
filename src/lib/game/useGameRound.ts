@@ -38,6 +38,15 @@ export interface GameRound {
   giveUp: () => void;
   /** The most recent score event, or null before any has happened — see ScoreEvent. */
   scoreEvent: ScoreEvent | null;
+  /** Full score-event log (newest-last) — end-screen Act 1 itemizes from this. */
+  scoreEvents: ScoreEvent[];
+  /**
+   * Event-sourced running total (floored), BEFORE the clean-solve time bonus
+   * and BEFORE failure zeroing. The live readout uses `score` (display);
+   * the breakdown needs this raw total so computeScore can re-apply the
+   * terminal rules without double-counting.
+   */
+  eventScore: number;
   /** Display score: the event-sourced running total plus the clean-solve time bonus, zeroed on a failed round. */
   score: number;
   /** True once the clock has hit 0:00 and the round is running on the attempt budget instead. */
@@ -89,6 +98,8 @@ export function useGameRound(target: Country, zoomMax: number): GameRound {
     guessLetter,
     giveUp,
     scoreEvent: latestScoreEvent(state),
+    scoreEvents: state.scoreEvents,
+    eventScore: state.score,
     score: computeScore(state.status, state.score, state.remainingSeconds),
     inLockout: inLockout(state),
     lockoutAttemptsRemaining: state.lockoutAttemptsRemaining,

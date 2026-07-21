@@ -9,10 +9,14 @@ import {
   type StreakState,
 } from "./index";
 import type { RoundStatus } from "../game/round";
+import { readSave } from "../storage/outcomes";
+import type { LedgerEntry } from "../storage/outcomes";
 
 export interface UseStreakResult {
   streak: StreakState;
   notices: StreakNotices;
+  /** The per-day outcome ledger behind the heatmap (US-017), refreshed on record. */
+  ledger: Record<string, LedgerEntry>;
   /** Kind, ready-to-render message for the current notices (or null). */
   noticeMessage: string | null;
   recordOutcome: (
@@ -35,12 +39,18 @@ export function useStreak(date: string): UseStreakResult {
   const [boot] = useState(() => applyPendingFreezes(date));
   const [streak, setStreak] = useState<StreakState>(boot.state);
   const [notices, setNotices] = useState<StreakNotices>(boot.notices);
+  // Read back through the storage seam rather than threading the save
+  // through StreakResult — applyPendingFreezes may have written `frozen`
+  // rows before this hook's first render, and re-reading is one localStorage
+  // hit per round transition.
+  const [ledger, setLedger] = useState<Record<string, LedgerEntry>>(() => readSave().ledger);
 
   const recordOutcome = useCallback(
     (status: Exclude<RoundStatus, "running">, score: number, target: string) => {
       const result = recordRoundOutcome(status, date, score, target);
       setStreak(result.state);
       setNotices(result.notices);
+      setLedger(readSave().ledger);
     },
     [date],
   );
@@ -59,5 +69,5 @@ export function useStreak(date: string): UseStreakResult {
     return null;
   }, [notices, streak.longest_streak]);
 
-  return { streak, notices, noticeMessage, recordOutcome };
+  return { streak, notices, ledger, noticeMessage, recordOutcome };
 }

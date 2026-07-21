@@ -184,6 +184,12 @@ This *is* the product; get it right before optimizing anything else.
   display.
 - `src/components/TriviaOverlay`, `src/components/ShareResult` → the
   target's trivia fact and the post-round spoiler-safe share string.
+- `src/components/Heatmap`, `src/components/StatsOverlay` → the
+  contribution heatmap and the full-history view it lives in (US-017).
+  **Entry point:** the end screen's Act 2 embeds a compact 12-week
+  window; its "FULL HISTORY" button opens the 12-month (53-week) stats
+  view as an **overlay, not a route** — the app has no router and the
+  post-round map stays explorable underneath.
 - `src/lib/geo/` → TopoJSON loading (`scene.ts`, `pathBounds.ts`),
   neighbor compass-direction slot assignment (`labelLayout.ts`).
 - `src/lib/game/` → `round.ts` (RoundCore: the round's pure reducer —
@@ -198,6 +204,13 @@ This *is* the product; get it right before optimizing anything else.
   changing the game-loop code that calls it.
 - `src/lib/share/` → share-string generation (day number, outcome,
   guess-pattern row).
+- `src/lib/stats/heatmap.ts` → pure ledger → calendar-grid derivation
+  (columns are weeks, rows are days, UTC day math). Five cell states:
+  `solved`, `solved_late`, `failed`, `frozen`, `missed` — plus `future`
+  for days padding out the current week. Failed and frozen carry glyphs
+  (`✕`, `❄`) so no state is told apart by color alone. The view is
+  deliberately honest: misses and failures occupy the same real estate
+  wins do.
 - Trivia fact data lives alongside the generated country dataset (see
   `scripts/generate-countries-geo.mjs` / `merge-country-metadata.mjs`),
   not a separate `src/lib/trivia/` module as originally planned.

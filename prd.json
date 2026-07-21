@@ -172,8 +172,8 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": "Same pipeline + review bar as existing trivia. Hint-strength grading is an open question in the PRD - the spoiler guard (no name/demonym) is the enforceable floor."
+      "passes": true,
+      "notes": "Added fun_fact to the app schema and both country generation stages. A deterministic, API-key-free generator converts the 240 curated trivia entries into brief answer-free facts; country-facts-review.json tracks each with needsReview:true. The generation pipeline rejects missing facts, malformed review flags, country-name spoilers, and demonym spoilers. npm run gen:countries, 168 tests, and npx tsc --noEmit pass."
     },
     {
       "id": "US-011",

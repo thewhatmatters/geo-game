@@ -2,6 +2,7 @@ import countriesData from "../../data/countries.json";
 
 export interface Country {
   name: string;
+  fun_fact: string;
   path: string;
   centroid: { lat: number; lng: number };
   neighbor_codes: string[];

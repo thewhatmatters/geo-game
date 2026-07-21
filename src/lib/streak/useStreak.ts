@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { readStreak, recordRoundOutcome } from "./index";
 import type { StreakState } from "./index";
+import type { RoundStatus } from "../game/round";
 
 /**
  * Exposes the persisted streak, read synchronously on first render, plus a
@@ -14,8 +15,8 @@ export function useStreak(date: string) {
   const [streak, setStreak] = useState<StreakState>(() => readStreak());
 
   const recordOutcome = useCallback(
-    (outcome: "solved" | "failed") => {
-      setStreak(recordRoundOutcome(outcome, date));
+    (status: Exclude<RoundStatus, "running">, score: number, target: string) => {
+      setStreak(recordRoundOutcome(status, date, score, target));
     },
     [date],
   );

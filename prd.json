@@ -258,7 +258,7 @@
         "Typecheck passes"
       ],
       "priority": 15,
-      "passes": false,
+      "passes": true,
       "notes": "Data model in prd-geo-round-2.md is illustrative - final field names are implementer's choice, but versioned. This is the source of truth for heatmap, freezes, map, and save code."
     },
     {

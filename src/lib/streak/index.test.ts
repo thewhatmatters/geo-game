@@ -1,92 +1,85 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { readStreak, recordRoundOutcome } from "./index";
+import { LEGACY_STREAK_STORAGE_KEY, SAVE_STORAGE_KEY } from "../storage/outcomes";
 
-function fakeLocalStorage(): Storage {
-  const store = new Map<string, string>();
+function memoryStorage(): Storage {
+  const values = new Map<string, string>();
   return {
-    getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => void store.set(key, value),
-    removeItem: (key: string) => void store.delete(key),
-    clear: () => store.clear(),
-    key: (index: number) => Array.from(store.keys())[index] ?? null,
-    get length() {
-      return store.size;
-    },
-  } as Storage;
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => void values.set(key, value),
+    removeItem: (key) => void values.delete(key),
+    clear: () => values.clear(),
+    key: (index) => [...values.keys()][index] ?? null,
+    get length() { return values.size; },
+  };
 }
 
-beforeEach(() => {
-  Object.defineProperty(globalThis, "localStorage", {
-    value: fakeLocalStorage(),
-    writable: true,
-    configurable: true,
-  });
-});
-
-const day1 = "2026-07-01";
-const day2 = "2026-07-02";
-const day3 = "2026-07-03";
-const dayAfterGap = "2026-07-05";
-
-describe("readStreak", () => {
-  it("returns a zeroed default state when nothing is persisted", () => {
-    expect(readStreak()).toEqual({
-      current_streak: 0,
-      longest_streak: 0,
-      last_played_date: null,
-    });
-  });
-});
-
-describe("recordRoundOutcome", () => {
-  it("sets current_streak to 1 on the first solve", () => {
-    const state = recordRoundOutcome("solved", day1);
-    expect(state.current_streak).toBe(1);
-    expect(state.longest_streak).toBe(1);
-    expect(state.last_played_date).toBe(day1);
+describe("ledger-derived streak", () => {
+  it("increments across consecutive solve days, including a late solve", () => {
+    const storage = memoryStorage();
+    recordRoundOutcome("solved", "2026-07-01", 500, "PE", storage);
+    const state = recordRoundOutcome("solved_late", "2026-07-02", 200, "JP", storage);
+    expect(state).toEqual({ current_streak: 2, longest_streak: 2, last_played_date: "2026-07-02" });
   });
 
-  it("increments current_streak when solved on the consecutive local day", () => {
-    recordRoundOutcome("solved", day1);
-    const state = recordRoundOutcome("solved", day2);
-    expect(state.current_streak).toBe(2);
-    expect(state.longest_streak).toBe(2);
-  });
-
-  it("resets current_streak to 1 when a day is skipped", () => {
-    recordRoundOutcome("solved", day1);
-    recordRoundOutcome("solved", day2);
-    const state = recordRoundOutcome("solved", dayAfterGap);
+  it("resets current to one when the ledger contains a date gap", () => {
+    const storage = memoryStorage();
+    recordRoundOutcome("solved", "2026-07-01", 500, "PE", storage);
+    recordRoundOutcome("solved", "2026-07-02", 500, "JP", storage);
+    const state = recordRoundOutcome("solved", "2026-07-04", 500, "AR", storage);
     expect(state.current_streak).toBe(1);
     expect(state.longest_streak).toBe(2);
   });
 
-  it("resets current_streak to 0 on a failed round", () => {
-    recordRoundOutcome("solved", day1);
-    recordRoundOutcome("solved", day2);
-    const state = recordRoundOutcome("failed", day3);
+  it("resets current to zero on either failure outcome", () => {
+    const storage = memoryStorage();
+    recordRoundOutcome("solved", "2026-07-01", 500, "PE", storage);
+    const state = recordRoundOutcome("gave_up", "2026-07-02", 0, "JP", storage);
     expect(state.current_streak).toBe(0);
-    expect(state.longest_streak).toBe(2);
-  });
-
-  it("keeps longest_streak at its prior maximum after a later reset", () => {
-    recordRoundOutcome("solved", day1);
-    recordRoundOutcome("solved", day2);
-    recordRoundOutcome("failed", day3);
-    const state = recordRoundOutcome("solved", dayAfterGap);
-    expect(state.current_streak).toBe(1);
-    expect(state.longest_streak).toBe(2);
-  });
-
-  it("persists state so a later readStreak reflects it without another guess", () => {
-    recordRoundOutcome("solved", day1);
-    expect(readStreak().current_streak).toBe(1);
-  });
-
-  it("is idempotent for repeated calls on the same local day", () => {
-    recordRoundOutcome("solved", day1);
-    const state = recordRoundOutcome("solved", day1);
-    expect(state.current_streak).toBe(1);
     expect(state.longest_streak).toBe(1);
+  });
+
+  it("derives the same result on every read instead of persisting new streak fields", () => {
+    const storage = memoryStorage();
+    recordRoundOutcome("solved", "2026-07-01", 500, "PE", storage);
+    expect(readStreak(storage)).toEqual(readStreak(storage));
+    expect(JSON.parse(storage.getItem(SAVE_STORAGE_KEY)!)).not.toHaveProperty("current_streak");
+  });
+});
+
+describe("legacy streak migration", () => {
+  it("preserves current and best, then continues from the ledger", () => {
+    const storage = memoryStorage();
+    storage.setItem(LEGACY_STREAK_STORAGE_KEY, JSON.stringify({
+      current_streak: 4,
+      longest_streak: 9,
+      last_played_date: "2026-07-20",
+    }));
+
+    expect(readStreak(storage)).toEqual({
+      current_streak: 4,
+      longest_streak: 9,
+      last_played_date: "2026-07-20",
+    });
+    const continued = recordRoundOutcome("solved", "2026-07-21", 500, "PE", storage);
+    expect(continued.current_streak).toBe(5);
+    expect(continued.longest_streak).toBe(9);
+  });
+
+  it("imports legacy keys only once", () => {
+    const storage = memoryStorage();
+    storage.setItem(LEGACY_STREAK_STORAGE_KEY, JSON.stringify({
+      current_streak: 3,
+      longest_streak: 7,
+      last_played_date: "2026-07-20",
+    }));
+    readStreak(storage);
+    storage.setItem(LEGACY_STREAK_STORAGE_KEY, JSON.stringify({
+      current_streak: 99,
+      longest_streak: 99,
+      last_played_date: "2026-07-20",
+    }));
+    expect(readStreak(storage).current_streak).toBe(3);
+    expect(readStreak(storage).longest_streak).toBe(7);
   });
 });

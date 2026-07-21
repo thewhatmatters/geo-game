@@ -6,21 +6,24 @@ const countries = countriesData as Record<string, Country>;
 
 describe("getDailyCountry", () => {
   it("is deterministic for repeated calls with the same date", () => {
-    const date = new Date("2026-07-11T00:00:00.000Z");
+    const date = "2026-07-11";
     const first = getDailyCountry(date);
     const second = getDailyCountry(date);
     expect(second).toEqual(first);
   });
 
-  it("is deterministic across different times on the same UTC date", () => {
-    const morning = getDailyCountry(new Date("2026-07-11T01:00:00.000Z"));
-    const night = getDailyCountry(new Date("2026-07-11T23:59:59.999Z"));
-    expect(night.targetCode).toBe(morning.targetCode);
-    expect(night.neighborCodes).toEqual(morning.neighborCodes);
+  it("maps the same local date string to the same country", () => {
+    expect(getDailyCountry("2026-07-11")).toEqual(getDailyCountry("2026-07-11"));
+  });
+
+  it("generally changes the country on consecutive local dates", () => {
+    const codes = ["2026-07-11", "2026-07-12", "2026-07-13", "2026-07-14"]
+      .map((date) => getDailyCountry(date).targetCode);
+    expect(new Set(codes).size).toBeGreaterThan(1);
   });
 
   it("picks a target country that exists in the dataset", () => {
-    const { targetCode, target } = getDailyCountry(new Date("2026-07-11T00:00:00.000Z"));
+    const { targetCode, target } = getDailyCountry("2026-07-11");
     expect(countries[targetCode]).toBe(target);
   });
 
@@ -28,13 +31,10 @@ describe("getDailyCountry", () => {
     // Sample a spread of dates rather than just one, since neighbor count
     // depends on which country the hash lands on.
     const dates = [
-      "2026-01-01T00:00:00.000Z",
-      "2026-03-15T00:00:00.000Z",
-      "2026-07-11T00:00:00.000Z",
-      "2026-11-30T00:00:00.000Z",
+      "2026-01-01", "2026-03-15", "2026-07-11", "2026-11-30",
     ];
     for (const iso of dates) {
-      const { neighborCodes } = getDailyCountry(new Date(iso));
+      const { neighborCodes } = getDailyCountry(iso);
       expect(neighborCodes.length).toBeLessThanOrEqual(3);
     }
   });

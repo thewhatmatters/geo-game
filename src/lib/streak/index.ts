@@ -12,10 +12,6 @@ const DEFAULT_STATE: StreakState = {
   last_played_date: null,
 };
 
-export function toUtcDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
 function wasYesterday(lastPlayedDate: string, today: string): boolean {
   const last = new Date(`${lastPlayedDate}T00:00:00Z`).getTime();
   const current = new Date(`${today}T00:00:00Z`).getTime();
@@ -42,10 +38,9 @@ function writeStreak(state: StreakState): StreakState {
  * Records a round's outcome against the persisted streak, per CLAUDE.md's
  * "streak counter (consecutive days solved)" rule. Same-UTC-day re-calls
  * (e.g. an effect firing twice) are idempotent — they neither increment nor
- * reset a streak already recorded for today.
+ * reset a streak already recorded for that local calendar date.
  */
-export function recordRoundOutcome(outcome: "solved" | "failed", date: Date = new Date()): StreakState {
-  const today = toUtcDateString(date);
+export function recordRoundOutcome(outcome: "solved" | "failed", today: string): StreakState {
   const prev = readStreak();
 
   if (prev.last_played_date === today) return prev;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bootRound } from "./boot";
+import { bootRound, resolveBootDate } from "./boot";
 import { getDailyCountry } from "./dailyCountry";
 import { getDayNumber } from "../share";
 
@@ -8,7 +8,7 @@ const FROZEN_DATE = new Date("2026-03-15T12:00:00Z");
 describe("bootRound", () => {
   it("resolves the same daily selection as getDailyCountry for the same date", () => {
     const boot = bootRound(FROZEN_DATE, { width: 800, height: 600 });
-    const expected = getDailyCountry(FROZEN_DATE);
+    const expected = getDailyCountry(boot.date);
     expect(boot.daily.targetCode).toBe(expected.targetCode);
     expect(boot.daily.neighborCodes).toEqual(expected.neighborCodes);
   });
@@ -33,9 +33,20 @@ describe("bootRound", () => {
     expect(bigger.scene.pxScale).toBeLessThan(landscape.scene.pxScale);
   });
 
-  it("carries the boot date through verbatim (streaks record against the puzzle's day)", () => {
+  it("carries one resolved local date through every date-keyed subsystem", () => {
     const boot = bootRound(FROZEN_DATE, { width: 800, height: 600 });
-    expect(boot.date).toBe(FROZEN_DATE);
-    expect(boot.dayNumber).toBe(getDayNumber(FROZEN_DATE));
+    expect(boot.date).toBe(resolveBootDate(FROZEN_DATE));
+    expect(boot.daily.date).toBe(boot.date);
+    expect(boot.dayNumber).toBe(getDayNumber(boot.date));
+  });
+
+  it("gives a valid ?date= override precedence over the device local date", () => {
+    const boot = bootRound(FROZEN_DATE, { width: 800, height: 600 }, "2030-02-03");
+    expect(boot.date).toBe("2030-02-03");
+    expect(boot.daily).toEqual(getDailyCountry("2030-02-03"));
+  });
+
+  it("rejects impossible overrides and falls back to the local date", () => {
+    expect(resolveBootDate(FROZEN_DATE, "2026-02-30")).toBe(resolveBootDate(FROZEN_DATE));
   });
 });

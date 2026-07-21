@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { readStreak, recordRoundOutcome, toUtcDateString } from "./index";
+import { readStreak, recordRoundOutcome } from "./index";
 
 function fakeLocalStorage(): Storage {
   const store = new Map<string, string>();
@@ -23,10 +23,10 @@ beforeEach(() => {
   });
 });
 
-const day1 = new Date("2026-07-01T12:00:00Z");
-const day2 = new Date("2026-07-02T08:00:00Z");
-const day3 = new Date("2026-07-03T23:00:00Z");
-const dayAfterGap = new Date("2026-07-05T00:00:00Z");
+const day1 = "2026-07-01";
+const day2 = "2026-07-02";
+const day3 = "2026-07-03";
+const dayAfterGap = "2026-07-05";
 
 describe("readStreak", () => {
   it("returns a zeroed default state when nothing is persisted", () => {
@@ -43,10 +43,10 @@ describe("recordRoundOutcome", () => {
     const state = recordRoundOutcome("solved", day1);
     expect(state.current_streak).toBe(1);
     expect(state.longest_streak).toBe(1);
-    expect(state.last_played_date).toBe(toUtcDateString(day1));
+    expect(state.last_played_date).toBe(day1);
   });
 
-  it("increments current_streak when solved on the consecutive UTC day", () => {
+  it("increments current_streak when solved on the consecutive local day", () => {
     recordRoundOutcome("solved", day1);
     const state = recordRoundOutcome("solved", day2);
     expect(state.current_streak).toBe(2);
@@ -83,9 +83,9 @@ describe("recordRoundOutcome", () => {
     expect(readStreak().current_streak).toBe(1);
   });
 
-  it("is idempotent for repeated calls on the same UTC day", () => {
+  it("is idempotent for repeated calls on the same local day", () => {
     recordRoundOutcome("solved", day1);
-    const state = recordRoundOutcome("solved", new Date("2026-07-01T23:59:00Z"));
+    const state = recordRoundOutcome("solved", day1);
     expect(state.current_streak).toBe(1);
     expect(state.longest_streak).toBe(1);
   });

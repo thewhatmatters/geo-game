@@ -155,8 +155,8 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": "Suggested skills: add-motion, automate-browser. Perf caution: prefer CSS/SVG pattern animation over per-frame React re-render."
+      "passes": true,
+      "notes": "Implemented CSS-only SVG stroke-opacity shimmer with prefers-reduced-motion static fallback. Hatch spacing is screen-normalized via scene.pxScale and becomes 60% wider / 58% fainter by two zoom steps; the original 45-degree vector pattern and both +/- WORLD_WIDTH tile clones remain intact. Browser screenshots: /tmp/us-009-screenshots/default.png, two-steps.png, world.png. Chromium verification confirmed animation vs reduced fallback and 2 wrap uses; concurrent 180-frame sample mean 13.38ms, p95 27.2ms with no visible hitching. 168 tests and npx tsc --noEmit pass."
     },
     {
       "id": "US-010",

@@ -1,4 +1,5 @@
 import type { Country, CountryCode } from "../../lib/game/dailyCountry";
+import { ZOOM_MIN, ZOOM_STEP } from "../../lib/game/zoom";
 import { WORLD_WIDTH, worldExtentY } from "../../lib/geo/scene";
 
 /** Fainter than NEIGHBOR_COLOR — this is tertiary background context, not something the player needs to read. Layered underneath the radial reveal mask in App.tsx (which multiplies this down further), so the base alpha needs headroom to still be legible during the gradual mid-zoom reveal, not just once fully zoomed out. */
@@ -43,6 +44,16 @@ const OCEAN_HATCH_ID = "ocean-hatch";
 /** Tile size (world units) and line thickness for the ocean hatch — smaller tile = tighter-packed diagonal lines. */
 const OCEAN_HATCH_TILE = 7;
 const OCEAN_HATCH_LINE_WIDTH = 1.25;
+/**
+ * By two zoom-out steps the hatch has reached its calmest treatment. The
+ * tile grows with zoom first (counteracting the map's scale-down, which
+ * otherwise packs more lines into every screen pixel), then another 60%,
+ * while the lines fade modestly. This keeps the vector hatch legible at a
+ * world reveal without turning it into a gray field of line noise.
+ */
+const HATCH_DENSITY_ZOOM_SPAN = ZOOM_STEP * 2;
+const HATCH_MAX_EXTRA_SPACING = 0.6;
+const HATCH_MIN_OPACITY = 0.42;
 
 /**
  * Graticule (lat/long grid) — pure math lines carrying zero country
@@ -97,6 +108,10 @@ export interface WorldMapLayerProps {
   revealRadius: number;
   /** 0–1: opacity at the very center of the gradient — 0 at default zoom (nothing shown yet), ramping toward 1 as the player zooms out. The gradient itself still fades spatially from this peak down to 0 at `revealRadius`. */
   peakOpacity: number;
+  /** Current ambient zoom multiplier; used only to calm hatch spacing/alpha as more of the world enters the viewport. */
+  zoom: number;
+  /** World units per screen pixel at default zoom (scene.pxScale). */
+  worldUnitsPerPixel: number;
 }
 
 /**
@@ -117,18 +132,31 @@ export function WorldMapLayer({
   centerY,
   revealRadius,
   peakOpacity,
+  zoom,
+  worldUnitsPerPixel,
 }: WorldMapLayerProps) {
+  const hatchZoomProgress = Math.min(1, Math.max(0, (zoom - ZOOM_MIN) / HATCH_DENSITY_ZOOM_SPAN));
+  // pxScale converts the desired on-screen spacing to world units. The
+  // ambient map transform then divides by zoom, so multiplying by zoom here
+  // keeps density stable before the extra calming factor is applied.
+  const hatchTile = OCEAN_HATCH_TILE * worldUnitsPerPixel * zoom * (1 + HATCH_MAX_EXTRA_SPACING * hatchZoomProgress);
+  const hatchOpacity = 1 - (1 - HATCH_MIN_OPACITY) * hatchZoomProgress;
   return (
     <>
       <defs>
         <pattern
           id={OCEAN_HATCH_ID}
-          width={OCEAN_HATCH_TILE}
-          height={OCEAN_HATCH_TILE}
+          width={hatchTile}
+          height={hatchTile}
           patternUnits="userSpaceOnUse"
           patternTransform="rotate(45)"
         >
-          <line x1={0} y1={0} x2={0} y2={OCEAN_HATCH_TILE} stroke={OCEAN_LINE_COLOR} strokeWidth={OCEAN_HATCH_LINE_WIDTH} />
+          {/* Motion lives entirely in CSS; React only recalculates density
+              when zoom itself changes. Keeping the original single line
+              also retains Chromium's reliable SVG-pattern paint path. */}
+          <g opacity={hatchOpacity}>
+            <line className="ocean-hatch__flow" x1={0} y1={0} x2={0} y2={hatchTile} stroke={OCEAN_LINE_COLOR} strokeWidth={OCEAN_HATCH_LINE_WIDTH * worldUnitsPerPixel * zoom} />
+          </g>
         </pattern>
         <radialGradient id={REVEAL_GRADIENT_ID} gradientUnits="userSpaceOnUse" cx={centerX} cy={centerY} r={Math.max(revealRadius, 1)}>
           <stop offset="0%" stopColor="#fff" stopOpacity={peakOpacity} />
@@ -142,7 +170,11 @@ export function WorldMapLayer({
           <rect x={-WORLD_WIDTH} y={HATCH_Y} width={WORLD_WIDTH * 3} height={HATCH_HEIGHT} fill={`url(#${REVEAL_GRADIENT_ID})`} />
         </mask>
       </defs>
-      <g data-testid="world-map-layer" mask={`url(#${REVEAL_MASK_ID})`}>
+      <g
+        data-testid="world-map-layer"
+        data-hatch-density={hatchZoomProgress.toFixed(2)}
+        mask={`url(#${REVEAL_MASK_ID})`}
+      >
         <g id={WORLD_TILE_ID}>
           <rect x={HATCH_X} y={HATCH_Y} width={HATCH_WIDTH} height={HATCH_HEIGHT} fill={`url(#${OCEAN_HATCH_ID})`} />
           <g data-testid="world-graticule" stroke={GRATICULE_COLOR} strokeWidth={GRATICULE_LINE_WIDTH_PX}>

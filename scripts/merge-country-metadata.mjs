@@ -64,6 +64,11 @@ for (const [code, entry] of Object.entries(geo)) {
   result[code] = {
     name: entry.name,
     fun_fact: entry.fun_fact,
+    // Flag emoji (world-countries' own `flag` field — regional-indicator
+    // pair for the country's cca2). Only ever shown for a SOLVED share
+    // string; empty for the handful of world-atlas territories with no
+    // world-countries record, and the share string just omits it then.
+    flag: wc?.flag ?? '',
     path: entry.path,
     centroid: entry.centroid,
     neighbor_codes: neighborCodes,

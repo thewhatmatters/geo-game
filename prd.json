@@ -224,7 +224,7 @@
         "Typecheck passes"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": "Suggested skills: automate-browser, polish-copy. Extends src/lib/share/. Lockout-mode outcome representation in the pattern row is an open question - pick a spoiler-safe encoding and document it in the diff."
     },
     {

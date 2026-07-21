@@ -16,7 +16,8 @@ import { getAllCountries } from "./lib/game/dailyCountry";
 import { isSolveStatus, useGameRound } from "./lib/game/useGameRound";
 import type { DisplayChar } from "./lib/game/useGameRound";
 import type { RoundBoot } from "./lib/game/boot";
-import { ROUND_DURATION_SECONDS } from "./lib/game/round";
+import { LOCKOUT_ATTEMPT_BUDGET, ROUND_DURATION_SECONDS } from "./lib/game/round";
+import { generateShareString } from "./lib/share";
 import { ZOOM_MIN, ZOOM_SENSITIVITY, ZOOM_STEP, zoomStepsCrossed } from "./lib/game/zoom";
 import { clampWorldCenterY, worldExtentY } from "./lib/geo/scene";
 import { viewBoxSize } from "./lib/geo/pathBounds";
@@ -342,6 +343,33 @@ function App({ boot }: { boot: RoundBoot }) {
   // viewport at minimum zoom and comfortably overshoots the whole viewport
   // by the time zoomProgress reaches 1 (guaranteeing full, un-vignetted
   // coverage once fully zoomed out, not just a soft fade at the corners).
+  // Act 2's share text. Built here (not inside EndScreen) so the end screen
+  // stays presentational and the exact string the Copy button writes is the
+  // same one the preview renders. Lockout wrongs are what's been burnt from
+  // the attempt budget — the pattern row marks those squares differently
+  // (see lib/share's guessPatternRow).
+  const shareString = useMemo(
+    () =>
+      generateShareString({
+        dayNumber,
+        status: round.status,
+        remainingSeconds: round.remainingSeconds,
+        guesses: round.guesses,
+        targetName: daily.target.name,
+        targetFlag: daily.target.flag,
+        lockoutWrongCount: LOCKOUT_ATTEMPT_BUDGET - round.lockoutAttemptsRemaining,
+      }),
+    [
+      dayNumber,
+      round.status,
+      round.remainingSeconds,
+      round.guesses,
+      round.lockoutAttemptsRemaining,
+      daily.target.name,
+      daily.target.flag,
+    ],
+  );
+
   const zoomProgress = Math.min(1, Math.max(0, (round.zoom - ZOOM_MIN) / (scene.maxZoom - ZOOM_MIN)));
   const opacityZoomSpan = Math.min(WORLD_REVEAL_OPACITY_ZOOM_SPAN, scene.maxZoom - ZOOM_MIN);
   const worldLayerPeakOpacity = Math.min(1, Math.max(0, (round.zoom - ZOOM_MIN) / opacityZoomSpan));
@@ -608,8 +636,10 @@ function App({ boot }: { boot: RoundBoot }) {
             −
           </button>
         </div>
-        {/* Act 1 end screen — any terminal outcome. Confetti still fires
-            from the solve effect above (once, solved|solved_late only). */}
+        {/* End screen — any terminal outcome. Act 1 (score recap) plus Act 2
+            (share/copy, streak, countdown to tomorrow); the round surface
+            itself carries no share affordance. Confetti still fires from the
+            solve effect above (once, solved|solved_late only). */}
         {round.status !== "running" && (
           <EndScreen
             status={round.status}
@@ -617,6 +647,8 @@ function App({ boot }: { boot: RoundBoot }) {
             scoreEvents={round.scoreEvents}
             remainingSeconds={round.remainingSeconds}
             dayNumber={dayNumber}
+            shareString={shareString}
+            currentStreak={streak.current_streak}
           />
         )}
       </div>

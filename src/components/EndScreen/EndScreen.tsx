@@ -1,26 +1,36 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RoundStatus, ScoreEvent } from "../../lib/game/round";
 import {
   buildScoreBreakdown,
   outcomeHeadline,
   type BreakdownLine,
 } from "../../lib/game/scoreBreakdown";
+import { countdownToNextRound } from "../../lib/game/nextRound";
 
 /**
- * End screen Act 1 — Street-Fighter-style itemized score recap.
+ * End screen — the post-round surface, in two acts.
  *
- * Mounted on any terminal outcome. Reads RoundCore's score-event log via
- * buildScoreBreakdown (no re-derivation). Lines cascade in sequence with a
- * terminal cadence (CSS entrance + staggered mount); reduced-motion users
- * get the full list at once.
+ * Act 1: Street-Fighter-style itemized score recap. Reads RoundCore's
+ * score-event log via buildScoreBreakdown (no re-derivation). Lines cascade
+ * in sequence with a terminal cadence (CSS entrance + staggered mount);
+ * reduced-motion users get the full list at once.
  *
- * Act 2 (share / countdown / retention) lands in US-013 and will extend
- * this shell — keep the surface self-contained so that story only adds
- * siblings, not a rewrite.
+ * Act 2 (US-013): the handoff — share preview + copy, current streak, and a
+ * live countdown to the next local-midnight round. This is the ONLY place
+ * in the app with share/copy affordances; the round surface deliberately
+ * has none (they'd be noise mid-round and a spoiler risk before the round
+ * resolves). The stats strip is a grid sized to take more cells later —
+ * freeze, heatmap and the played-countries map land in following stories.
  */
 
 /** Delay between successive line reveals (ms). */
 export const LINE_STAGGER_MS = 280;
+
+/** How long the "COPIED" acknowledgement stays up before the button resets. */
+export const COPY_FEEDBACK_MS = 1800;
+
+/** Countdown refresh cadence — a whole-second readout only needs 1Hz. */
+const COUNTDOWN_TICK_MS = 1000;
 
 export interface EndScreenProps {
   status: RoundStatus;
@@ -29,6 +39,10 @@ export interface EndScreenProps {
   scoreEvents: ScoreEvent[];
   remainingSeconds: number;
   dayNumber: number;
+  /** Act 2 — the exact text the Copy button writes to the clipboard. */
+  shareString: string;
+  /** Act 2 — consecutive days solved (see lib/streak). */
+  currentStreak: number;
 }
 
 function formatAmount(amount: number): string {
@@ -48,12 +62,28 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+/**
+ * Live HH:MM:SS until the next local-midnight round. Reads the wall clock
+ * (the one place post-round that has to) and re-samples every second rather
+ * than counting down its own state, so a backgrounded tab resumes accurate.
+ */
+function useNextRoundCountdown(): string {
+  const [countdown, setCountdown] = useState(() => countdownToNextRound(new Date()));
+  useEffect(() => {
+    const id = setInterval(() => setCountdown(countdownToNextRound(new Date())), COUNTDOWN_TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+  return countdown;
+}
+
 export function EndScreen({
   status,
   eventScore,
   scoreEvents,
   remainingSeconds,
   dayNumber,
+  shareString,
+  currentStreak,
 }: EndScreenProps) {
   const breakdown = useMemo(
     () =>
@@ -88,6 +118,27 @@ export function EndScreen({
     });
     return () => timers.forEach(clearTimeout);
   }, [breakdown.lines]);
+
+  const countdown = useNextRoundCountdown();
+
+  // "copied" acknowledges a successful write; "error" covers a browser that
+  // denies clipboard access (insecure context, permission refused) — the
+  // preview above stays selectable as the manual fallback either way.
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  useEffect(() => {
+    if (copyState === "idle") return;
+    const id = setTimeout(() => setCopyState("idle"), COPY_FEEDBACK_MS);
+    return () => clearTimeout(id);
+  }, [copyState]);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(shareString);
+      setCopyState("copied");
+    } catch {
+      setCopyState("error");
+    }
+  }, [shareString]);
 
   return (
     <div
@@ -134,6 +185,45 @@ export function EndScreen({
             );
           })}
         </ol>
+
+        {/* ── Act 2 — the handoff ───────────────────────────────────────
+            Share preview → copy → what you're coming back to. Sits below
+            the recap so the score story lands first. */}
+        <div className="end-screen__act2" data-testid="end-screen-act2">
+          <p className="end-screen__kicker" aria-hidden="true">
+            // TRANSMISSION
+          </p>
+          <pre className="end-screen__share" data-testid="share-string">
+            {shareString}
+          </pre>
+          <button
+            type="button"
+            className="end-screen__copy"
+            data-testid="copy-button"
+            onClick={handleCopy}
+          >
+            {copyState === "copied"
+              ? "COPIED"
+              : copyState === "error"
+                ? "COPY BLOCKED — SELECT ABOVE"
+                : "COPY"}
+          </button>
+
+          {/* Stats strip — one cell today (streak). Freeze, the heatmap and
+              the played-countries map are following stories; the grid is
+              auto-fit so they slot in as siblings without a relayout. */}
+          <div className="end-screen__stats" data-testid="end-screen-stats">
+            <div className="end-screen__stat" data-testid="end-screen-streak">
+              <span className="end-screen__stat-label">STREAK</span>
+              <span className="end-screen__stat-value">{currentStreak}</span>
+            </div>
+          </div>
+
+          <p className="end-screen__countdown" data-testid="next-round-countdown">
+            <span className="end-screen__stat-label">NEXT DROP</span>
+            <span className="end-screen__countdown-value">{countdown}</span>
+          </p>
+        </div>
       </div>
     </div>
   );

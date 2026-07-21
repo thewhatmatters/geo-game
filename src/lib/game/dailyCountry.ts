@@ -3,6 +3,8 @@ import countriesData from "../../data/countries.json";
 export interface Country {
   name: string;
   fun_fact: string;
+  /** Flag emoji — shown only in a solved share string (see lib/share). Empty for the few territories with no world-countries record. */
+  flag: string;
   path: string;
   centroid: { lat: number; lng: number };
   neighbor_codes: string[];

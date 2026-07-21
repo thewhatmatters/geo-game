@@ -10,6 +10,7 @@ import { TriviaOverlay } from "./components/TriviaOverlay";
 import { DotMatrixNumber } from "./components/DotMatrixNumber";
 import { ScoreReadout } from "./components/ScoreReadout";
 import { LockoutStrip } from "./components/LockoutStrip";
+import { AnswerDisplay } from "./components/AnswerDisplay";
 import { getAllCountries } from "./lib/game/dailyCountry";
 import { isSolveStatus, useGameRound } from "./lib/game/useGameRound";
 import type { DisplayChar } from "./lib/game/useGameRound";
@@ -552,17 +553,7 @@ function App({ boot }: { boot: RoundBoot }) {
               strokes was unreadable when this was centered on the target. */}
           <div className="solve-panel">
             <TriviaOverlay code={daily.targetCode} />
-            <div className="display-name" data-testid="display-name">
-              {splitIntoWordGroups(round.displayChars).map((word, wordIndex) => (
-                <div className="display-name__group" key={wordIndex}>
-                  {word.map((displayChar, charIndex) => (
-                    <span className="display-name__cell" key={charIndex}>
-                      {displayChar.revealed ? displayChar.char : ""}
-                    </span>
-                  ))}
-                </div>
-              ))}
-            </div>
+            <AnswerDisplay words={splitIntoWordGroups(round.displayChars)} guesses={round.guesses} />
             <span className="solve-panel__connector" aria-hidden="true" />
             <Keyboard
               guesses={round.guesses}

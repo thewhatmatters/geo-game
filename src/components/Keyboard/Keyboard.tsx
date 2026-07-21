@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import type { LetterState } from "../../lib/game/useGameRound";
 
 const ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
@@ -16,6 +17,14 @@ export interface KeyboardProps {
  * identically (Wordle's pattern).
  */
 export function Keyboard({ guesses, onGuess, disabled = false }: KeyboardProps) {
+  const reduceMotion = useReducedMotion();
+  const previousGuesses = useRef(guesses);
+  const latestGuess = Object.keys(guesses).find((letter) => !previousGuesses.current[letter]);
+
+  useEffect(() => {
+    previousGuesses.current = guesses;
+  }, [guesses]);
+
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
       if (disabled || !/^[a-zA-Z]$/.test(event.key)) return;
@@ -32,15 +41,21 @@ export function Keyboard({ guesses, onGuess, disabled = false }: KeyboardProps) 
           {row.split("").map((letter) => {
             const state = guesses[letter];
             return (
-              <button
+              <motion.button
                 key={letter}
                 type="button"
                 className={`keyboard__key${state ? ` keyboard__key--${state}` : ""}`}
                 disabled={disabled || Boolean(state)}
                 onClick={() => onGuess(letter)}
+                animate={
+                  !reduceMotion && latestGuess === letter && state === "wrong"
+                    ? { x: [0, -5, 5, -3, 3, 0], backgroundColor: ["#f2f2f2", "#8f2525", "#2a2a2a"] }
+                    : { x: 0 }
+                }
+                transition={{ duration: reduceMotion ? 0 : 0.38, ease: "easeOut" }}
               >
                 {letter}
-              </button>
+              </motion.button>
             );
           })}
         </div>

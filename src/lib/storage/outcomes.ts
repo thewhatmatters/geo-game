@@ -4,7 +4,8 @@ export const SAVE_STORAGE_KEY = "geo:save";
 export const LEGACY_STREAK_STORAGE_KEY = "geo:streak";
 export const SAVE_SCHEMA_VERSION = 1;
 
-export type LedgerOutcome = "solved" | "solved_late" | "failed";
+/** Per-day outcomes. `frozen` is written when a streak freeze covers a missed day. */
+export type LedgerOutcome = "solved" | "solved_late" | "failed" | "frozen";
 
 export interface LedgerEntry {
   outcome: LedgerOutcome;
@@ -85,6 +86,14 @@ export function readSave(storage: Pick<Storage, "getItem" | "setItem"> = localSt
   return save;
 }
 
+export function writeSave(
+  save: GeoSave,
+  storage: Pick<Storage, "getItem" | "setItem"> = localStorage,
+): GeoSave {
+  storage.setItem(SAVE_STORAGE_KEY, JSON.stringify(save));
+  return save;
+}
+
 export function recordOutcome(
   date: string,
   status: Exclude<RoundStatus, "running">,
@@ -106,6 +115,20 @@ export function recordOutcome(
       date,
     };
   }
-  storage.setItem(SAVE_STORAGE_KEY, JSON.stringify(next));
-  return next;
+  return writeSave(next, storage);
+}
+
+/** Writes freeze-covered miss days into the ledger (score/target empty by design). */
+export function recordFrozenDays(
+  dates: string[],
+  storage: Pick<Storage, "getItem" | "setItem"> = localStorage,
+): GeoSave {
+  if (dates.length === 0) return readSave(storage);
+  const save = readSave(storage);
+  const ledger = { ...save.ledger };
+  for (const date of dates) {
+    if (ledger[date]) continue;
+    ledger[date] = { outcome: "frozen", score: 0, target: "" };
+  }
+  return writeSave({ ...save, ledger }, storage);
 }

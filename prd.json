@@ -276,7 +276,7 @@
         "Typecheck passes"
       ],
       "priority": 16,
-      "passes": false,
+      "passes": true,
       "notes": "Suggested skills: polish-copy (messaging). Freeze application is recomputed/applied at boot from the ledger - keep it deterministic so the save code round-trips."
     },
     {

@@ -21,6 +21,7 @@ import { generateShareString } from "./lib/share";
 import { ZOOM_MIN, ZOOM_SENSITIVITY, ZOOM_STEP, zoomStepsCrossed } from "./lib/game/zoom";
 import { clampWorldCenterY, worldExtentY } from "./lib/geo/scene";
 import { viewBoxSize } from "./lib/geo/pathBounds";
+import { FREEZE_RULE_COPY } from "./lib/streak";
 import { useStreak } from "./lib/streak/useStreak";
 
 // Desired on-screen sizes (px) for the target outline stroke and neighbor
@@ -172,7 +173,7 @@ function App({ boot }: { boot: RoundBoot }) {
   );
 
   const round = useGameRound(daily.target, scene.maxZoom, boot.date);
-  const { streak, recordOutcome } = useStreak(boot.date);
+  const { streak, notices, noticeMessage, recordOutcome } = useStreak(boot.date);
   const recordedRef = useRef(false);
   const outlineRef = useRef<HTMLDivElement>(null);
   const topPanelRef = useRef<HTMLDivElement>(null);
@@ -560,7 +561,25 @@ function App({ boot }: { boot: RoundBoot }) {
           <h1>Geo</h1>
           <p className="streak" data-testid="streak">
             Streak: {streak.current_streak} (best {streak.longest_streak})
+            <span
+              className={
+                "streak__freezes" +
+                (notices.earnedFreeze ? " streak__freezes--earned" : "")
+              }
+              data-testid="streak-freezes"
+              title={FREEZE_RULE_COPY}
+            >
+              <span className="streak__freeze-icon" aria-hidden="true">
+                ❄
+              </span>
+              {streak.freezes}
+            </span>
           </p>
+          {noticeMessage ? (
+            <p className="streak__notice" data-testid="streak-notice-masthead">
+              {noticeMessage}
+            </p>
+          ) : null}
           <div className="clock" data-testid="clock">
             <DotMatrixNumber value={Math.ceil(round.remainingSeconds)} />
           </div>
@@ -648,6 +667,9 @@ function App({ boot }: { boot: RoundBoot }) {
             dayNumber={dayNumber}
             shareString={shareString}
             currentStreak={streak.current_streak}
+            freezes={streak.freezes}
+            noticeMessage={noticeMessage}
+            freezeRuleCopy={FREEZE_RULE_COPY}
           />
         )}
       </div>

@@ -206,7 +206,7 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "Suggested skills: automate-browser, add-motion, polish-copy. The breakdown reads from US-002's score-event records - no re-derivation."
     },
     {

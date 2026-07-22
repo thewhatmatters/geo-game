@@ -190,6 +190,13 @@ This *is* the product; get it right before optimizing anything else.
   window; its "FULL HISTORY" button opens the 12-month (53-week) stats
   view as an **overlay, not a route** — the app has no router and the
   post-round map stays explorable underneath.
+- `src/components/TrophyMap` → the trophy world map (US-018): every
+  country drawn from the same projected paths the round uses, at a fixed
+  full-world viewBox, filled by solve tier (green = in time, amber =
+  late) and neutral where unsolved. Deliberately NOT `WorldMapLayer` —
+  that layer exists to be revealed by the round's zoom mask and tiles
+  itself 3× for the antimeridian wrap. Appears twice: compact (no
+  legend) in the end screen's Act 2, full-size in `StatsOverlay`.
 - `src/lib/geo/` → TopoJSON loading (`scene.ts`, `pathBounds.ts`),
   neighbor compass-direction slot assignment (`labelLayout.ts`).
 - `src/lib/game/` → `round.ts` (RoundCore: the round's pure reducer —
@@ -211,6 +218,15 @@ This *is* the product; get it right before optimizing anything else.
   (`✕`, `❄`) so no state is told apart by color alone. The view is
   deliberately honest: misses and failures occupy the same real estate
   wins do.
+- `src/lib/stats/trophyMap.ts` → pure `trophyMap` record + country
+  dataset → render-ready country list (state `in_time` / `late` /
+  `unsolved`, solve date, tooltip summary, `N/total` progress). One
+  deliberate departure from the round view's true-scale rule: a SOLVED
+  country whose footprint spans under `MICRO_MARKER_MAX_SPAN` world
+  units (Luxembourg, Singapore, most island microstates render
+  sub-pixel at whole-world scale) gets a locator dot instead of its own
+  shape — an invisible trophy is not a trophy. Unsolved micro-countries
+  never get one.
 - Trivia fact data lives alongside the generated country dataset (see
   `scripts/generate-countries-geo.mjs` / `merge-country-metadata.mjs`),
   not a separate `src/lib/trivia/` module as originally planned.

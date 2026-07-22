@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { Country, CountryCode } from "../../lib/game/dailyCountry";
 import { ZOOM_MIN, ZOOM_STEP } from "../../lib/game/zoom";
 import { WORLD_WIDTH, worldExtentY } from "../../lib/geo/scene";
@@ -124,7 +125,7 @@ export interface WorldMapLayerProps {
  * widening and intensifying as the player zooms out, culminating in the
  * whole world visible once fully zoomed out.
  */
-export function WorldMapLayer({
+function WorldMapLayerImpl({
   countries,
   excludeStrokeCodes,
   strokeWidth,
@@ -201,3 +202,13 @@ export function WorldMapLayer({
     </>
   );
 }
+
+/**
+ * Memoized (US-018): this is ~190 paths tiled 3× and it re-rendered on every
+ * App render, including the once-a-second re-render the end screen's
+ * next-round countdown triggers while the post-round map is still on screen.
+ * All props are already stable references (module-level country dataset,
+ * memoized exclusion Set, plain numbers), so the tile now repaints only when
+ * the zoom/reveal values actually move.
+ */
+export const WorldMapLayer = memo(WorldMapLayerImpl);

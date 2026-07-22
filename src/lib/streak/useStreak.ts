@@ -10,13 +10,15 @@ import {
 } from "./index";
 import type { RoundStatus } from "../game/round";
 import { readSave } from "../storage/outcomes";
-import type { LedgerEntry } from "../storage/outcomes";
+import type { LedgerEntry, TrophyMapEntry } from "../storage/outcomes";
 
 export interface UseStreakResult {
   streak: StreakState;
   notices: StreakNotices;
   /** The per-day outcome ledger behind the heatmap (US-017), refreshed on record. */
   ledger: Record<string, LedgerEntry>;
+  /** Country code → solve tier + date, behind the trophy map (US-018). */
+  trophyMap: Record<string, TrophyMapEntry>;
   /** Kind, ready-to-render message for the current notices (or null). */
   noticeMessage: string | null;
   recordOutcome: (
@@ -43,14 +45,17 @@ export function useStreak(date: string): UseStreakResult {
   // through StreakResult — applyPendingFreezes may have written `frozen`
   // rows before this hook's first render, and re-reading is one localStorage
   // hit per round transition.
-  const [ledger, setLedger] = useState<Record<string, LedgerEntry>>(() => readSave().ledger);
+  // One read serves both views (heatmap ledger, trophy map) — they're two
+  // projections of the same save, and re-reading twice per transition would
+  // be two localStorage hits for no gain.
+  const [save, setSave] = useState(() => readSave());
 
   const recordOutcome = useCallback(
     (status: Exclude<RoundStatus, "running">, score: number, target: string) => {
       const result = recordRoundOutcome(status, date, score, target);
       setStreak(result.state);
       setNotices(result.notices);
-      setLedger(readSave().ledger);
+      setSave(readSave());
     },
     [date],
   );
@@ -69,5 +74,12 @@ export function useStreak(date: string): UseStreakResult {
     return null;
   }, [notices, streak.longest_streak]);
 
-  return { streak, notices, ledger, noticeMessage, recordOutcome };
+  return {
+    streak,
+    notices,
+    ledger: save.ledger,
+    trophyMap: save.trophyMap,
+    noticeMessage,
+    recordOutcome,
+  };
 }

@@ -8,8 +8,10 @@ import {
 import { countdownToNextRound } from "../../lib/game/nextRound";
 import { Heatmap } from "../Heatmap";
 import { StatsOverlay } from "../StatsOverlay";
+import { TrophyMap } from "../TrophyMap";
 import { COMPACT_WEEKS, buildHeatmap } from "../../lib/stats/heatmap";
-import type { LedgerEntry } from "../../lib/storage/outcomes";
+import { getAllCountries, type CountryCode } from "../../lib/game/dailyCountry";
+import type { LedgerEntry, TrophyMapEntry } from "../../lib/storage/outcomes";
 
 /**
  * End screen — the post-round surface, in two acts.
@@ -55,9 +57,16 @@ export interface EndScreenProps {
   freezeRuleCopy?: string;
   /** US-017 — the outcome ledger behind the heatmap; today's entry is already written by the time this mounts. */
   ledger?: Record<string, LedgerEntry>;
+  /** US-018 — country code → solve tier + date, behind the trophy map. */
+  trophyMap?: Record<string, TrophyMapEntry>;
+  /** Today's country: its fill animates in when this screen opens on a solve. */
+  targetCode?: CountryCode | null;
   /** Boot date — the heatmap's last real day. */
   today: string;
 }
+
+/** Module-level and immutable — a stable reference, so TrophyMap's memo holds. */
+const ALL_COUNTRIES = getAllCountries();
 
 function formatAmount(amount: number): string {
   if (amount > 0) return `+${amount}`;
@@ -102,6 +111,8 @@ export function EndScreen({
   noticeMessage = null,
   freezeRuleCopy,
   ledger = {},
+  trophyMap = {},
+  targetCode = null,
   today,
 }: EndScreenProps) {
   const breakdown = useMemo(
@@ -273,6 +284,22 @@ export function EndScreen({
             </button>
           </div>
 
+          {/* Trophy map (US-018): the long game. Today's solve fills its
+              country as this screen opens; the collection it joins is the
+              reason to come back after the streak inevitably breaks. */}
+          <div className="end-screen__trophy" data-testid="end-screen-trophy">
+            <p className="end-screen__kicker" aria-hidden="true">
+              // TERRITORY
+            </p>
+            <TrophyMap
+              countries={ALL_COUNTRIES}
+              trophyMap={trophyMap}
+              highlightCode={isSolve ? targetCode : null}
+              showLegend={false}
+              label="Solved countries world map"
+            />
+          </div>
+
           {noticeMessage ? (
             <p className="end-screen__notice" data-testid="streak-notice">
               {noticeMessage}
@@ -292,7 +319,12 @@ export function EndScreen({
         </div>
       </div>
       {showStats && (
-        <StatsOverlay ledger={ledger} today={today} onClose={() => setShowStats(false)} />
+        <StatsOverlay
+          ledger={ledger}
+          trophyMap={trophyMap}
+          today={today}
+          onClose={() => setShowStats(false)}
+        />
       )}
     </div>
   );

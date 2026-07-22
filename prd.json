@@ -310,7 +310,7 @@
         "Typecheck passes"
       ],
       "priority": 18,
-      "passes": false,
+      "passes": true,
       "notes": "Suggested skills: automate-browser, add-motion. Strongest-evidence retention feature in the research - the fill moment should feel like the day's trophy."
     },
     {

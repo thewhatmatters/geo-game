@@ -1,11 +1,13 @@
 import { useMemo } from "react";
 import { Heatmap } from "../Heatmap";
+import { TrophyMap } from "../TrophyMap";
 import {
   FULL_HISTORY_WEEKS,
   buildHeatmap,
   heatmapTotals,
 } from "../../lib/stats/heatmap";
-import type { LedgerEntry } from "../../lib/storage/outcomes";
+import { getAllCountries } from "../../lib/game/dailyCountry";
+import type { LedgerEntry, TrophyMapEntry } from "../../lib/storage/outcomes";
 
 /**
  * Stats view (US-017) — the full 12-month trailing history.
@@ -17,12 +19,17 @@ import type { LedgerEntry } from "../../lib/storage/outcomes";
 
 export interface StatsOverlayProps {
   ledger: Record<string, LedgerEntry>;
+  /** US-018 — the trophy map, shown full-size here alongside the history grid. */
+  trophyMap?: Record<string, TrophyMapEntry>;
   /** Boot date — the grid's last real day (see lib/game/boot). */
   today: string;
   onClose: () => void;
 }
 
-export function StatsOverlay({ ledger, today, onClose }: StatsOverlayProps) {
+/** Module-level and immutable — a stable reference, so TrophyMap's memo holds. */
+const ALL_COUNTRIES = getAllCountries();
+
+export function StatsOverlay({ ledger, trophyMap = {}, today, onClose }: StatsOverlayProps) {
   const grid = useMemo(
     () => buildHeatmap(ledger, today, FULL_HISTORY_WEEKS),
     [ledger, today],
@@ -48,6 +55,10 @@ export function StatsOverlay({ ledger, today, onClose }: StatsOverlayProps) {
           <span>{totals.frozen} frozen</span>
           <span>{totals.missed} missed</span>
         </p>
+        <p className="end-screen__kicker" aria-hidden="true">
+          // TERRITORY — TROPHY MAP
+        </p>
+        <TrophyMap countries={ALL_COUNTRIES} trophyMap={trophyMap} />
         <button
           type="button"
           className="end-screen__copy"

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Keyboard } from "./components/Keyboard";
 import { CountryPath } from "./components/CountryOutline";
@@ -23,6 +23,7 @@ import { clampWorldCenterY, worldExtentY } from "./lib/geo/scene";
 import { viewBoxSize } from "./lib/geo/pathBounds";
 import { FREEZE_RULE_COPY } from "./lib/streak";
 import { useStreak } from "./lib/streak/useStreak";
+import { prefersReducedMotion } from "./lib/ui/motion";
 
 // Desired on-screen sizes (px) for the target outline stroke and neighbor
 // labels, converted to viewBox user-units via the scene's pxScale so they
@@ -172,6 +173,7 @@ function App({ boot }: { boot: RoundBoot }) {
     [daily],
   );
 
+  const reduceMotion = useReducedMotion();
   const round = useGameRound(daily.target, scene.maxZoom, boot.date);
   const { streak, notices, ledger, trophyMap, saveCode, noticeMessage, recordOutcome, importCode } =
     useStreak(boot.date);
@@ -232,10 +234,14 @@ function App({ boot }: { boot: RoundBoot }) {
   // timeout) — recordedRef above already guards the transition, so this
   // effect only needs its own guard against React re-invoking effects
   // (e.g. StrictMode's dev double-invoke).
+  // Skipped entirely under prefers-reduced-motion: a full-screen particle
+  // burst is exactly the kind of large-area motion that setting asks for
+  // less of, and the end screen already announces the solve in words.
   const confettiFiredRef = useRef(false);
   useEffect(() => {
     if (!isSolveStatus(round.status) || confettiFiredRef.current) return;
     confettiFiredRef.current = true;
+    if (prefersReducedMotion()) return;
     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
   }, [round.status]);
 
@@ -249,9 +255,12 @@ function App({ boot }: { boot: RoundBoot }) {
   useEffect(() => {
     if (crossedZoomSteps > prevCrossedStepsRef.current) {
       prevCrossedStepsRef.current = crossedZoomSteps;
-      setZoomPulseStep(crossedZoomSteps);
+      // Still tracked (so a later step is still "new"), just never detonated
+      // for a player who asked for reduced motion — the newly revealed map
+      // is the substance; the expanding ring is pure flourish.
+      if (!reduceMotion) setZoomPulseStep(crossedZoomSteps);
     }
-  }, [crossedZoomSteps]);
+  }, [crossedZoomSteps, reduceMotion]);
 
   // Re-clamps whenever the zoom level shrinks the allowed pan budget (radius
   // or vertical range) so a subsequent drag starts from a valid position
@@ -321,7 +330,23 @@ function App({ boot }: { boot: RoundBoot }) {
     }
     recomputeOffset();
     window.addEventListener("resize", recomputeOffset);
-    return () => window.removeEventListener("resize", recomputeOffset);
+    // orientationchange fires before the resize on some mobile browsers and
+    // is the reliable signal there; both funnel into the same measurement.
+    window.addEventListener("orientationchange", recomputeOffset);
+    // A ResizeObserver rather than a dependency list of everything that can
+    // change a panel's height (lockout strip mounting, the keyboard
+    // animating out at round end, a notice line wrapping): the panels
+    // themselves report, so the map re-centers on the real height at the
+    // moment it settles, not on a guess made one render early.
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(recomputeOffset);
+    if (topPanelRef.current) observer?.observe(topPanelRef.current);
+    if (bottomPanelRef.current) observer?.observe(bottomPanelRef.current);
+    return () => {
+      window.removeEventListener("resize", recomputeOffset);
+      window.removeEventListener("orientationchange", recomputeOffset);
+      observer?.disconnect();
+    };
   }, [round.status]);
 
   // Progress from 0 (default zoom) to 1 (zoomMax — fully zoomed out).
@@ -371,9 +396,15 @@ function App({ boot }: { boot: RoundBoot }) {
     ],
   );
 
-  const zoomProgress = Math.min(1, Math.max(0, (round.zoom - ZOOM_MIN) / (scene.maxZoom - ZOOM_MIN)));
-  const opacityZoomSpan = Math.min(WORLD_REVEAL_OPACITY_ZOOM_SPAN, scene.maxZoom - ZOOM_MIN);
-  const worldLayerPeakOpacity = Math.min(1, Math.max(0, (round.zoom - ZOOM_MIN) / opacityZoomSpan));
+  // Both ratios divide by the scene's zoom RANGE, which a degenerate scene
+  // (maxZoom collapsed onto ZOOM_MIN — nothing to zoom out into) makes zero.
+  // Guarding here rather than at the source keeps the NaN out of the SVG
+  // attributes it would otherwise reach (an unrendered world layer).
+  const zoomRange = Math.max(0, scene.maxZoom - ZOOM_MIN);
+  const zoomProgress = zoomRange > 0 ? Math.min(1, Math.max(0, (round.zoom - ZOOM_MIN) / zoomRange)) : 0;
+  const opacityZoomSpan = Math.min(WORLD_REVEAL_OPACITY_ZOOM_SPAN, zoomRange);
+  const worldLayerPeakOpacity =
+    opacityZoomSpan > 0 ? Math.min(1, Math.max(0, (round.zoom - ZOOM_MIN) / opacityZoomSpan)) : 0;
   const worldLayerRevealRadius = viewBoxSize(scene.viewBox) * round.zoom * (0.5 + zoomProgress);
 
 
@@ -552,6 +583,36 @@ function App({ boot }: { boot: RoundBoot }) {
           multiplier={round.multiplier}
           scoreEvent={round.scoreEvent}
         />
+        {/* Fixed corner cluster, independent of the top/bottom panel flow —
+            one click crosses the same ZOOM_STEP as one scroll/pinch step
+            (see BUTTON_ZOOM_DELTA); zoom itself stays available after the
+            round ends (see useGameRound's handleZoomWheel), so these aren't
+            disabled on solved/failed.
+
+            FIRST in the DOM among the interactive chrome, matching where it
+            sits on screen: rendered after the panels (its old position) it
+            was the LAST tab stop in the app, 27 stops past the keyboard,
+            despite being the top-left control. */}
+        <div className="zoom-controls">
+          <button
+            type="button"
+            className="zoom-controls__button"
+            onClick={() => round.handleZoomWheel(-BUTTON_ZOOM_DELTA)}
+            disabled={round.zoom <= ZOOM_MIN}
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className="zoom-controls__button"
+            onClick={() => round.handleZoomWheel(BUTTON_ZOOM_DELTA)}
+            disabled={round.zoom >= scene.maxZoom}
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+        </div>
         {/* Pinned to the top edge, leaving the center of the screen — where
             the target actually renders — completely unobstructed. Seeing
             the outline clearly is the whole point of the game. */}
@@ -581,7 +642,15 @@ function App({ boot }: { boot: RoundBoot }) {
               {noticeMessage}
             </p>
           ) : null}
-          <div className="clock" data-testid="clock">
+          {/* The dot grid is pure geometry to a screen reader, so the label
+              carries the reading. role="timer" (a live region) announces it
+              as it changes without the caller polling. */}
+          <div
+            className="clock"
+            data-testid="clock"
+            role="timer"
+            aria-label={`${Math.ceil(round.remainingSeconds)} seconds remaining`}
+          >
             <DotMatrixNumber value={Math.ceil(round.remainingSeconds)} />
           </div>
           {/* Only once the clock has actually hit 0:00 — the pips ARE the
@@ -613,47 +682,43 @@ function App({ boot }: { boot: RoundBoot }) {
             <AnswerDisplay words={splitIntoWordGroups(round.displayChars)} guesses={round.guesses} />
             {/* Keyboard + give-up leave the surface once the round ends —
                 Act 1's score recap takes that space (EndScreen below). */}
-            {round.status === "running" && (
-              <>
-                <span className="solve-panel__connector" aria-hidden="true" />
-                <Keyboard
-                  guesses={round.guesses}
-                  onGuess={round.guessLetter}
-                  disabled={false}
-                />
-              </>
-            )}
+            {/* The input leaves on any terminal outcome — animated out
+                rather than cut, so the round's end reads as one movement
+                with the end screen arriving over it. */}
+            <AnimatePresence>
+              {round.status === "running" && (
+                <motion.div
+                  key="solve-input"
+                  className="solve-panel__input"
+                  initial={false}
+                  exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 12 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.22, ease: "easeOut" }}
+                >
+                  <span className="solve-panel__connector" aria-hidden="true" />
+                  <Keyboard
+                    guesses={round.guesses}
+                    onGuess={round.guessLetter}
+                    disabled={false}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-          {round.status === "running" && (
-            <button type="button" className="give-up" onClick={round.giveUp}>
-              Give up
-            </button>
-          )}
-        </div>
-        {/* Fixed corner cluster, independent of the top/bottom panel flow —
-            one click crosses the same ZOOM_STEP as one scroll/pinch step
-            (see BUTTON_ZOOM_DELTA); zoom itself stays available after the
-            round ends (see useGameRound's handleZoomWheel), so these aren't
-            disabled on solved/failed. */}
-        <div className="zoom-controls">
-          <button
-            type="button"
-            className="zoom-controls__button"
-            onClick={() => round.handleZoomWheel(-BUTTON_ZOOM_DELTA)}
-            disabled={round.zoom <= ZOOM_MIN}
-            aria-label="Zoom in"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            className="zoom-controls__button"
-            onClick={() => round.handleZoomWheel(BUTTON_ZOOM_DELTA)}
-            disabled={round.zoom >= scene.maxZoom}
-            aria-label="Zoom out"
-          >
-            −
-          </button>
+          <AnimatePresence>
+            {round.status === "running" && (
+              <motion.button
+                key="give-up"
+                type="button"
+                className="give-up"
+                onClick={round.giveUp}
+                initial={false}
+                exit={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
+                transition={{ duration: reduceMotion ? 0 : 0.18, ease: "easeOut" }}
+              >
+                Give up
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
         {/* End screen — any terminal outcome. Act 1 (score recap) plus Act 2
             (share/copy, streak, countdown to tomorrow); the round surface

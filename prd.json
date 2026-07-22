@@ -345,8 +345,8 @@
         "Typecheck passes"
       ],
       "priority": 20,
-      "passes": false,
-      "notes": "Suggested skills: automate-browser, audit-ui. Final gate story - this is the evidence package the branch competition is judged on."
+      "passes": true,
+      "notes": "Suggested skills: automate-browser, audit-ui. Final gate story - this is the evidence package the branch competition is judged on. | Verified 2026-07-21: scripts/qa-sweep.mjs (npm run qa:sweep) — 67 screenshots + report in docs/qa/us-020/, zero findings across 4 outcomes, 7 viewports (320px–4K), reduced motion, and a 5-day streak sequence with a frozen miss."
     }
   ]
 }

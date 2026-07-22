@@ -256,6 +256,13 @@ This *is* the product; get it right before optimizing anything else.
 - `npm run lint` — ESLint.
 - `npm run gen:countries-geo` / `npm run gen:countries` — regenerate
   the country/outline/trivia dataset from source data.
+- `npm run qa:sweep -- http://localhost:PORT` — scripted browser sweep
+  (`scripts/qa-sweep.mjs`): every terminal outcome, seven viewports from
+  320px to 4K, reduced motion on/off, a five-day streak sequence with a
+  frozen miss, plus per-element overflow/overlap/clipping, tab-order and
+  zoom-pan-bounds assertions. Writes screenshots + `report.md` to
+  `docs/qa/us-020/`. Needs a dev server running and Playwright on
+  `NODE_PATH` — deliberately NOT a project dependency (QA-only tool).
 
 ## Open design decisions — needs playtesting, not just spec
 - Score-economy values for the upcoming event-sourced score (combo
@@ -288,6 +295,22 @@ This *is* the product; get it right before optimizing anything else.
 - The vault doc's multiple-choice design and discrete 4-stage hint
   ladder are **superseded** by this file — don't reintroduce them
   without an explicit new decision.
+- Reduced motion is honored in **three** places, and a new animation has
+  to opt out at whichever one drives it: the `prefers-reduced-motion`
+  block at the end of `index.css` (CSS animations/transitions),
+  framer-motion's `useReducedMotion()` inside components, and
+  `lib/ui/motion.ts`'s `prefersReducedMotion()` for effects with no
+  element at all (the confetti burst, the zoom pulse).
+- The end-screen panel is **taller than the viewport** on most screens
+  once Act 2's heatmap and trophy map are in it, so it scrolls inside
+  itself (`max-height` + `overflow-y: auto`). That `max-height` needs
+  `box-sizing: border-box` or the panel's own padding pushes it ~40px
+  past the viewport and clips the outcome headline off the top.
+- Answer-slot sizing multiplies **two independent** CSS custom
+  properties — `--cell-density` (from the name's length, set by
+  `answerSize`) and `--cell-viewport` (from the breakpoint). A plain
+  width override in a media query loses to the `[data-size]` attribute
+  selector; the multipliers compose instead.
 - `document.body.scrollWidth` is **not** a reliable mobile-overflow
   check in this repo — `.app` is `position: fixed; inset: 0`, and
   fixed subtrees don't propagate overflow into `body.scrollWidth`. Use

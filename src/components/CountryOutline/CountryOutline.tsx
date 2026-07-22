@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { pathBounds, boundsToViewBox } from "../../lib/geo/pathBounds";
 
 /** Smooths the ~200ms clock-tick increments of the normal draw-in. */
@@ -35,6 +35,10 @@ export function CountryPath({
   fillColor = "none",
 }: CountryPathProps) {
   const pathLength = Math.min(100, Math.max(0, completion)) / 100;
+  // Under reduced motion the outline still grows with the clock — that's the
+  // hint itself, not decoration — but each step lands immediately instead of
+  // being tweened, and the terminal-closure sweep is dropped entirely.
+  const reduceMotion = useReducedMotion();
 
   // Previous completion (0-1), tracked to detect the terminal-closure jump.
   const prevPathLengthRef = useRef(pathLength);
@@ -54,11 +58,13 @@ export function CountryPath({
       initial={false}
       animate={{ pathLength, pathSpacing: 1 }}
       transition={
-        isClosureJump
-          ? { duration: CLOSURE_TRANSITION_SECONDS, ease: "easeOut" }
-          : { duration: DRAW_TRANSITION_SECONDS, ease: "linear" }
+        reduceMotion
+          ? { duration: 0 }
+          : isClosureJump
+            ? { duration: CLOSURE_TRANSITION_SECONDS, ease: "easeOut" }
+            : { duration: DRAW_TRANSITION_SECONDS, ease: "linear" }
       }
-      style={{ transition: "fill 0.6s ease" }}
+      style={{ transition: reduceMotion ? "none" : "fill 0.6s ease" }}
     />
   );
 }

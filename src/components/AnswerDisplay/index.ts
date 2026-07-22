@@ -1,1 +1,1 @@
-export { AnswerDisplay } from "./AnswerDisplay";
+export { AnswerDisplay, answerSize, type AnswerSize } from "./AnswerDisplay";

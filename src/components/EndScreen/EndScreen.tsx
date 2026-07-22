@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { RoundStatus, ScoreEvent } from "../../lib/game/round";
 import {
   buildScoreBreakdown,
@@ -12,6 +13,7 @@ import { TrophyMap } from "../TrophyMap";
 import { COMPACT_WEEKS, buildHeatmap } from "../../lib/stats/heatmap";
 import { getAllCountries, type CountryCode } from "../../lib/game/dailyCountry";
 import type { LedgerEntry, TrophyMapEntry } from "../../lib/storage/outcomes";
+import { prefersReducedMotion } from "../../lib/ui/motion";
 
 /**
  * End screen — the post-round surface, in two acts.
@@ -84,10 +86,6 @@ function amountTone(line: BreakdownLine): "positive" | "negative" | "neutral" | 
   return "neutral";
 }
 
-function prefersReducedMotion(): boolean {
-  if (typeof window === "undefined" || !window.matchMedia) return false;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
 
 /**
  * Live HH:MM:SS until the next local-midnight round. Reads the wall clock
@@ -134,6 +132,16 @@ export function EndScreen({
 
   const headline = outcomeHeadline(status, dayNumber);
   const isSolve = status === "solved" || status === "solved_late";
+  const reduceMotion = useReducedMotion();
+
+  // The round is over and the keyboard is gone, so the natural next Tab stop
+  // is inside this panel — move focus here once on mount so a keyboard user
+  // lands on the recap rather than having to Tab back through the round
+  // chrome to reach Copy / Full history.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    panelRef.current?.focus({ preventScroll: true });
+  }, []);
 
   // Progressive reveal via staggered mount. Reduced-motion jumps straight
   // to the full list. CSS handles the entrance animation (transform/opacity
@@ -185,14 +193,26 @@ export function EndScreen({
   }, [shareString]);
 
   return (
-    <div
+    <motion.div
       className="end-screen"
       data-testid="end-screen"
       data-outcome={status}
       role="dialog"
       aria-label={headline}
+      /* NOT aria-modal: the map underneath stays deliberately explorable
+         (zoom/pan survive the round), so focus is not trapped here. */
+      initial={reduceMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: reduceMotion ? 0 : 0.35, ease: "easeOut" }}
     >
-      <div className="end-screen__panel">
+      <motion.div
+        className="end-screen__panel"
+        ref={panelRef}
+        tabIndex={-1}
+        initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: reduceMotion ? 0 : 0.34, ease: [0.16, 1, 0.3, 1] }}
+      >
         <p
           className={`end-screen__headline${isSolve ? " end-screen__headline--granted" : " end-screen__headline--denied"}`}
           data-testid="end-screen-headline"
@@ -323,17 +343,22 @@ export function EndScreen({
             <span className="end-screen__countdown-value">{countdown}</span>
           </p>
         </div>
-      </div>
-      {showStats && (
-        <StatsOverlay
-          ledger={ledger}
-          trophyMap={trophyMap}
-          today={today}
-          saveCode={saveCode}
-          onImportCode={onImportCode}
-          onClose={() => setShowStats(false)}
-        />
-      )}
-    </div>
+      </motion.div>
+      {/* AnimatePresence so closing the history animates OUT instead of
+          vanishing — the panel is tall, and a hard unmount reads as a bug. */}
+      <AnimatePresence>
+        {showStats && (
+          <StatsOverlay
+            key="stats-overlay"
+            ledger={ledger}
+            trophyMap={trophyMap}
+            today={today}
+            saveCode={saveCode}
+            onImportCode={onImportCode}
+            onClose={() => setShowStats(false)}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

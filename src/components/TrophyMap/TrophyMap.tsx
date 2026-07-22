@@ -1,4 +1,5 @@
 import { memo, useMemo, useState } from "react";
+import type { KeyboardEvent } from "react";
 import type { Country, CountryCode } from "../../lib/game/dailyCountry";
 import { WORLD_WIDTH, worldExtentY } from "../../lib/geo/scene";
 import {
@@ -105,6 +106,14 @@ function TrophyMapImpl({
                     "aria-label": summary,
                     onClick: () => setSelected(country),
                     onFocus: () => setSelected(country),
+                    // An SVG <g role="button"> gets none of a real button's
+                    // key handling for free — Enter/Space have to be wired
+                    // by hand or the map is mouse/touch-only.
+                    onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      event.preventDefault();
+                      setSelected(country);
+                    },
                   }
                 : {})}
             >

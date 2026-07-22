@@ -31,6 +31,14 @@ describe("computeGeoScene", () => {
     }
   });
 
+  it("drops a neighbor code the dataset has no country for, keeping the rest", () => {
+    const target = findTargetWithNeighbors();
+    const real = target.neighbor_codes.slice(0, 2);
+    const scene = computeGeoScene({ target, neighborCodes: [...real, "ZZZ_MISSING"] });
+
+    expect(scene.neighbors.map((slot) => slot.code)).toEqual(real);
+  });
+
   it("returns no neighbors for an island (0 neighbor codes) without error", () => {
     const island = Object.values(countries).find((c) => c.is_island)!;
     expect(() => computeGeoScene({ target: island, neighborCodes: [] })).not.toThrow();

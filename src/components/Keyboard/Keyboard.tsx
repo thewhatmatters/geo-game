@@ -4,6 +4,20 @@ import type { LetterState } from "../../lib/game/useGameRound";
 
 const ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
 
+/**
+ * True when a keystroke belongs to something other than the game: a
+ * shortcut (⌘R, Ctrl+F — the letter must NOT be eaten as a guess), or
+ * typing into a real text field (the save-code box in the stats overlay,
+ * which is reachable while a round is still on screen).
+ */
+export function isForeignKeystroke(event: KeyboardEvent): boolean {
+  if (event.metaKey || event.ctrlKey || event.altKey) return true;
+  const target = event.target as HTMLElement | null;
+  if (!target) return false;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
+}
+
 export interface KeyboardProps {
   guesses: Record<string, LetterState>;
   onGuess: (letter: string) => void;
@@ -27,7 +41,7 @@ export function Keyboard({ guesses, onGuess, disabled = false }: KeyboardProps) 
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
-      if (disabled || !/^[a-zA-Z]$/.test(event.key)) return;
+      if (disabled || isForeignKeystroke(event) || !/^[a-zA-Z]$/.test(event.key)) return;
       onGuess(event.key.toUpperCase());
     }
     window.addEventListener("keydown", handleKeydown);
@@ -35,7 +49,7 @@ export function Keyboard({ guesses, onGuess, disabled = false }: KeyboardProps) 
   }, [disabled, onGuess]);
 
   return (
-    <div className="keyboard">
+    <div className="keyboard" role="group" aria-label="Letter keyboard">
       {ROWS.map((row) => (
         <div className="keyboard__row" key={row}>
           {row.split("").map((letter) => {
@@ -45,6 +59,10 @@ export function Keyboard({ guesses, onGuess, disabled = false }: KeyboardProps) 
                 key={letter}
                 type="button"
                 className={`keyboard__key${state ? ` keyboard__key--${state}` : ""}`}
+                /* Color alone carries the guessed/correct/wrong state
+                   visually; the label is what carries it to a screen
+                   reader (and to a colorblind user hovering the key). */
+                aria-label={state ? `${letter}, ${state}` : `Guess ${letter}`}
                 disabled={disabled || Boolean(state)}
                 onClick={() => onGuess(letter)}
                 animate={

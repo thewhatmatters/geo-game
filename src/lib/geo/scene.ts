@@ -239,12 +239,18 @@ export function computeGeoScene(
   const viewBoxBounds = viewBoxToBounds(viewBox);
   const pxScale = viewBoxSize(viewBox) / renderPx;
 
-  const neighbors = daily.neighborCodes.map((code) => {
+  // A neighbor code with no country record (adjacency data naming a
+  // territory the shipped dataset doesn't carry) drops out of the scene
+  // entirely rather than throwing on `country.path` — the same graceful
+  // path an island day already takes, just with fewer than 3 slots. Same
+  // guard for a record with no geometry.
+  const neighbors = daily.neighborCodes.flatMap((code) => {
     const country = getCountry(code);
+    if (!country?.path) return [];
     const bounds = pathBounds(country.path);
     const visibleBounds =
       visiblePointsBounds(country.path, viewBoxBounds) ?? clipBounds(bounds, viewBoxBounds);
-    return { code, country, bounds, visibleBounds };
+    return [{ code, country, bounds, visibleBounds }];
   });
 
   // Height-fit ceiling: visible world height at zoom z is

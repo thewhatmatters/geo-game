@@ -173,7 +173,8 @@ function App({ boot }: { boot: RoundBoot }) {
   );
 
   const round = useGameRound(daily.target, scene.maxZoom, boot.date);
-  const { streak, notices, ledger, trophyMap, noticeMessage, recordOutcome } = useStreak(boot.date);
+  const { streak, notices, ledger, trophyMap, saveCode, noticeMessage, recordOutcome, importCode } =
+    useStreak(boot.date);
   const recordedRef = useRef(false);
   const outlineRef = useRef<HTMLDivElement>(null);
   const topPanelRef = useRef<HTMLDivElement>(null);
@@ -674,6 +675,8 @@ function App({ boot }: { boot: RoundBoot }) {
             trophyMap={trophyMap}
             targetCode={daily.targetCode}
             today={boot.date}
+            saveCode={saveCode}
+            onImportCode={importCode}
           />
         )}
       </div>

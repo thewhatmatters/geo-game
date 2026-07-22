@@ -227,6 +227,23 @@ This *is* the product; get it right before optimizing anything else.
   sub-pixel at whole-world scale) gets a locator dot instead of its own
   shape — an invisible trophy is not a trophy. Unsolved micro-countries
   never get one.
+- `src/lib/save/` → the save-code codec (US-019): `codec.ts` (pure
+  `GeoSave` ⇄ `GEO1.<base64url(compact JSON)>.<checksum>`), `merge.ts`
+  (import merge — union of days, better outcome wins a shared day), and
+  `index.ts` (the one storage-touching seam: decode → merge → write, so
+  a bad code never reaches localStorage). **Two versions, two jobs:**
+  the `GEO1` prefix versions the FRAME (a `GEO2` code is rejected by
+  name), and the payload's first element versions the SAVE SCHEMA
+  (migrated on decode). The compact form interns country codes in a
+  dictionary and stores dates as day offsets — ~22 chars per recorded
+  day. Deliberately pure of DOM/clock: this payload is what a future
+  Supabase sync pushes.
+- `src/components/SaveCode` → the export/import panel, rendered at the
+  bottom of `StatsOverlay` (the app has no settings surface; backup
+  belongs with the history it protects). Presentational — it takes an
+  already-encoded code and delegates import upward to `useStreak`'s
+  `importCode`, which re-runs the freeze pass and refreshes the streak,
+  heatmap and trophy map in place (no reload).
 - Trivia fact data lives alongside the generated country dataset (see
   `scripts/generate-countries-geo.mjs` / `merge-country-metadata.mjs`),
   not a separate `src/lib/trivia/` module as originally planned.

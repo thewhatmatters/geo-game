@@ -63,6 +63,10 @@ export interface EndScreenProps {
   targetCode?: CountryCode | null;
   /** Boot date — the heatmap's last real day. */
   today: string;
+  /** US-019 — the full player state as a code, for the stats overlay's backup panel. */
+  saveCode?: string;
+  /** US-019 — validates + applies a pasted code, returning the player-facing message. */
+  onImportCode?: (code: string) => { ok: boolean; message: string };
 }
 
 /** Module-level and immutable — a stable reference, so TrophyMap's memo holds. */
@@ -114,6 +118,8 @@ export function EndScreen({
   trophyMap = {},
   targetCode = null,
   today,
+  saveCode,
+  onImportCode,
 }: EndScreenProps) {
   const breakdown = useMemo(
     () =>
@@ -323,6 +329,8 @@ export function EndScreen({
           ledger={ledger}
           trophyMap={trophyMap}
           today={today}
+          saveCode={saveCode}
+          onImportCode={onImportCode}
           onClose={() => setShowStats(false)}
         />
       )}

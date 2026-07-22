@@ -1392,6 +1392,84 @@ button.heatmap__cell:focus-visible {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+/* ── Save code (US-019) ───────────────────────────────────────────────────
+   Export/import of the whole player state, sitting under the history it
+   protects in the stats overlay. The code itself is long, so it wraps and
+   scrolls inside its own box rather than stretching the panel. */
+.save-code {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.save-code__blurb {
+  margin: 0;
+  font-size: 0.6rem;
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.save-code__value {
+  margin: 0;
+  max-height: 6rem;
+  overflow: auto;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.88);
+  font-family: inherit;
+  font-size: 0.6rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+}
+
+.save-code__label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.save-code__input {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.6rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.save-code__input:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 1px;
+}
+
+.save-code__result {
+  margin: 0;
+  font-size: 0.6rem;
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+}
+
+.save-code__result--ok {
+  color: #7bd88f;
+}
+
+/* Amber, not red-only — paired with the wording, never color alone. */
+.save-code__result--error {
+  color: #ffb454;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .end-screen__line {
     animation: none !important;

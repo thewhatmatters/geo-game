@@ -328,7 +328,7 @@
         "Typecheck passes"
       ],
       "priority": 19,
-      "passes": false,
+      "passes": true,
       "notes": "Suggested skills: automate-browser. This codec becomes the future Supabase sync payload - keep it a pure src/lib/save/ module with no DOM dependencies."
     },
     {

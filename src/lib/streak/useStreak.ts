@@ -11,6 +11,8 @@ import {
 import type { RoundStatus } from "../game/round";
 import { readSave } from "../storage/outcomes";
 import type { LedgerEntry, TrophyMapEntry } from "../storage/outcomes";
+import { encodeSaveCode, importSaveCode } from "../save";
+import type { ImportResult } from "../save";
 
 export interface UseStreakResult {
   streak: StreakState;
@@ -19,6 +21,8 @@ export interface UseStreakResult {
   ledger: Record<string, LedgerEntry>;
   /** Country code → solve tier + date, behind the trophy map (US-018). */
   trophyMap: Record<string, TrophyMapEntry>;
+  /** The whole persisted state as a copy-pasteable code (US-019). */
+  saveCode: string;
   /** Kind, ready-to-render message for the current notices (or null). */
   noticeMessage: string | null;
   recordOutcome: (
@@ -26,6 +30,8 @@ export interface UseStreakResult {
     score: number,
     target: string,
   ) => void;
+  /** Validates + merges a pasted save code, then refreshes every derived view. */
+  importCode: (code: string) => ImportResult;
 }
 
 /**
@@ -60,6 +66,27 @@ export function useStreak(date: string): UseStreakResult {
     [date],
   );
 
+  /**
+   * Import re-runs the freeze pass rather than just re-reading: a restored
+   * history can leave bridgeable missed days between its last entry and
+   * today, and the player should land on the same state they'd have had if
+   * they'd opened the app on this device all along.
+   */
+  const importCode = useCallback(
+    (code: string): ImportResult => {
+      const result = importSaveCode(code);
+      if (!result.ok) return result;
+      const refreshed = applyPendingFreezes(date);
+      setStreak(refreshed.state);
+      setNotices(refreshed.notices);
+      setSave(readSave());
+      return result;
+    },
+    [date],
+  );
+
+  const saveCode = useMemo(() => encodeSaveCode(save), [save]);
+
   const noticeMessage = useMemo(() => {
     // Break framing wins when freezes couldn't fully cover the gap.
     if (notices.brokenStreak && notices.brokenStreak > 0) {
@@ -79,7 +106,9 @@ export function useStreak(date: string): UseStreakResult {
     notices,
     ledger: save.ledger,
     trophyMap: save.trophyMap,
+    saveCode,
     noticeMessage,
     recordOutcome,
+    importCode,
   };
 }

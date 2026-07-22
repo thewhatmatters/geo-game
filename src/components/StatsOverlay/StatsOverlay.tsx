@@ -6,6 +6,7 @@ import {
   buildHeatmap,
   heatmapTotals,
 } from "../../lib/stats/heatmap";
+import { SaveCode, type SaveCodeImportResult } from "../SaveCode";
 import { getAllCountries } from "../../lib/game/dailyCountry";
 import type { LedgerEntry, TrophyMapEntry } from "../../lib/storage/outcomes";
 
@@ -23,13 +24,24 @@ export interface StatsOverlayProps {
   trophyMap?: Record<string, TrophyMapEntry>;
   /** Boot date — the grid's last real day (see lib/game/boot). */
   today: string;
+  /** US-019 — the full player state as a code; the panel is omitted without it. */
+  saveCode?: string;
+  /** US-019 — validates + applies a pasted code, returning the player-facing message. */
+  onImportCode?: (code: string) => SaveCodeImportResult;
   onClose: () => void;
 }
 
 /** Module-level and immutable — a stable reference, so TrophyMap's memo holds. */
 const ALL_COUNTRIES = getAllCountries();
 
-export function StatsOverlay({ ledger, trophyMap = {}, today, onClose }: StatsOverlayProps) {
+export function StatsOverlay({
+  ledger,
+  trophyMap = {},
+  today,
+  saveCode,
+  onImportCode,
+  onClose,
+}: StatsOverlayProps) {
   const grid = useMemo(
     () => buildHeatmap(ledger, today, FULL_HISTORY_WEEKS),
     [ledger, today],
@@ -59,6 +71,11 @@ export function StatsOverlay({ ledger, trophyMap = {}, today, onClose }: StatsOv
           // TERRITORY — TROPHY MAP
         </p>
         <TrophyMap countries={ALL_COUNTRIES} trophyMap={trophyMap} />
+        {/* US-019 — backup lives with the history it protects, not in a
+            separate settings surface the app doesn't have. */}
+        {saveCode && onImportCode ? (
+          <SaveCode code={saveCode} onImport={onImportCode} />
+        ) : null}
         <button
           type="button"
           className="end-screen__copy"

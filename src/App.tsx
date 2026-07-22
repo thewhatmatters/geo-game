@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Keyboard } from "./components/Keyboard";
 import { CountryPath } from "./components/CountryOutline";
@@ -154,6 +154,7 @@ function clampPan(
 }
 
 function App({ boot }: { boot: RoundBoot }) {
+  const reduceMotion = useReducedMotion();
   const { daily, scene, dayNumber } = boot;
 
   // Center of the scene's viewBox — zooming out scales the map content
@@ -236,8 +237,8 @@ function App({ boot }: { boot: RoundBoot }) {
   useEffect(() => {
     if (!isSolveStatus(round.status) || confettiFiredRef.current) return;
     confettiFiredRef.current = true;
-    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-  }, [round.status]);
+    if (!reduceMotion) confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+  }, [round.status, reduceMotion]);
 
   // Reveal-pulse trigger: pure UI-layer detection of maxZoomReached
   // crossing a new ZOOM_STEP boundary (zoomStepsCrossed) — re-zooming over
@@ -516,7 +517,7 @@ function App({ boot }: { boot: RoundBoot }) {
               px from the viewport center (the zoom pivot) no matter how far
               out the player is. Remounts per step via the key, restarting
               the animation; unmounts when done to keep the DOM clean. */}
-          {zoomPulseStep > 0 && (
+          {zoomPulseStep > 0 && !reduceMotion && (
             <motion.circle
               key={zoomPulseStep}
               data-testid="zoom-pulse"
@@ -599,7 +600,13 @@ function App({ boot }: { boot: RoundBoot }) {
               floating between unrelated chrome (US-006). Everything here is
               off the map entirely — white text over the white outline
               strokes was unreadable when this was centered on the target. */}
-          <div className="solve-panel">
+          <motion.div
+            className="solve-panel"
+            key={round.inLockout ? "lockout" : "timed"}
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.24, ease: "easeOut" }}
+          >
             <TriviaOverlay
               code={daily.targetCode}
               /* After the round ends, treat the clock as fully elapsed so a
@@ -623,7 +630,7 @@ function App({ boot }: { boot: RoundBoot }) {
                 />
               </>
             )}
-          </div>
+          </motion.div>
           {round.status === "running" && (
             <button type="button" className="give-up" onClick={round.giveUp}>
               Give up
@@ -659,8 +666,9 @@ function App({ boot }: { boot: RoundBoot }) {
             (share/copy, streak, countdown to tomorrow); the round surface
             itself carries no share affordance. Confetti still fires from the
             solve effect above (once, solved|solved_late only). */}
-        {round.status !== "running" && (
-          <EndScreen
+        <AnimatePresence>
+          {round.status !== "running" && (
+            <EndScreen
             status={round.status}
             eventScore={round.eventScore}
             scoreEvents={round.scoreEvents}
@@ -677,8 +685,9 @@ function App({ boot }: { boot: RoundBoot }) {
             today={boot.date}
             saveCode={saveCode}
             onImportCode={importCode}
-          />
-        )}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </>
   );

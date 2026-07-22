@@ -30,6 +30,22 @@ body {
   min-height: 100vh;
   background: #000;
   color: #fff;
+  overflow: hidden;
+}
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+/* A consistent, high-contrast keyboard focus ring. Mouse users keep the
+   clean monochrome surface because :focus-visible only follows keyboard
+   navigation (and equivalent assistive input). */
+:where(button, textarea, input, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(0, 0, 0, 0.82);
 }
 
 /* .app is pinned edge-to-edge (top/bottom groups pushed to opposite ends
@@ -234,6 +250,8 @@ body {
   font-weight: 600;
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
+  min-width: 5ch;
+  text-align: right;
 }
 
 /* Only mounted when the combo is actually boosting (> x1), so its mere
@@ -598,6 +616,7 @@ body {
    floating boxes. */
 .display-name__group {
   display: flex;
+  max-width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.38);
   border-radius: 8px;
   overflow: hidden;
@@ -739,6 +758,9 @@ body {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 12px 40px rgba(0, 0, 0, 0.55);
   font-family: "Geist Mono", monospace;
   text-align: left;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .end-screen__headline {
@@ -748,6 +770,7 @@ body {
   letter-spacing: 0.08em;
   text-align: center;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 .end-screen__headline--granted {
@@ -987,6 +1010,8 @@ body {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.88);
+  min-width: 8ch;
+  text-align: right;
 }
 
 /* ── Contribution heatmap (US-017) ────────────────────────────────────────
@@ -1471,6 +1496,15 @@ button.heatmap__cell:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
   .end-screen__line {
     animation: none !important;
   }
@@ -1478,6 +1512,113 @@ button.heatmap__cell:focus-visible {
   .trophy-map__country--new,
   .trophy-map__marker--new {
     animation: none !important;
+  }
+}
+
+/* Very narrow phones, including the 320px acceptance floor. Keep every
+   fixed corner control inside its own half, and allow unusually long words
+   to shrink their answer cells instead of clipping the viewport. */
+@media (max-width: 359px) {
+  .app {
+    padding-inline: 0.5rem;
+  }
+
+  .app__top,
+  .app__bottom {
+    width: 100%;
+  }
+
+  .zoom-controls {
+    left: 0.5rem;
+    top: 0.5rem;
+  }
+
+  .score-readout {
+    right: 0.5rem;
+    top: 0.5rem;
+  }
+
+  .score-readout__value {
+    min-width: 4ch;
+    font-size: 1.25rem;
+  }
+
+  .display-name__group {
+    flex: 1 1 auto;
+  }
+
+  .display-name__cell {
+    min-width: 0;
+    width: clamp(1rem, 7vw, 1.3rem);
+  }
+
+  .keyboard__key {
+    min-width: clamp(1.55rem, 8.25vw, 1.7rem);
+    min-height: 2rem;
+    padding-block: 0.35rem;
+    border-radius: 7px;
+  }
+
+  .end-screen,
+  .stats-overlay {
+    padding: 0.5rem;
+  }
+
+  .end-screen__panel,
+  .stats-overlay__panel {
+    width: 100%;
+    max-height: calc(100dvh - 1rem);
+    padding-inline: 0.75rem;
+    box-sizing: border-box;
+  }
+}
+
+/* Short landscape phones and small split-screen windows need scrolling
+   overlays and a tighter live-round stack; no UI is allowed to overlap the
+   fixed corner controls. */
+@media (max-height: 620px) {
+  .app {
+    padding-block: 0.4rem;
+  }
+
+  .app__top h1,
+  .streak__notice {
+    display: none;
+  }
+
+  .streak {
+    margin-bottom: 0.2rem;
+  }
+
+  .dot-matrix {
+    transform: scale(0.82);
+    transform-origin: top center;
+    margin-bottom: -0.5rem;
+  }
+
+  .trivia-overlay__fun-fact {
+    display: none;
+  }
+
+  .give-up {
+    margin-top: 0.3rem;
+  }
+}
+
+/* Large desktops should gain breathing room without allowing the gameplay
+   controls to become billboard-sized or drift into the map focal area. */
+@media (min-width: 1600px) {
+  .app__top,
+  .app__bottom {
+    width: min(70vw, 1100px);
+  }
+
+  .solve-panel {
+    width: min(100%, 40rem);
+  }
+
+  .trivia-overlay {
+    width: min(60vw, 34rem);
   }
 }
 

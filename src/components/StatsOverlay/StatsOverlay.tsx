@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Heatmap } from "../Heatmap";
 import { TrophyMap } from "../TrophyMap";
 import {
@@ -42,20 +43,68 @@ export function StatsOverlay({
   onImportCode,
   onClose,
 }: StatsOverlayProps) {
+  const reduceMotion = useReducedMotion();
+  const panelRef = useRef<HTMLDivElement>(null);
   const grid = useMemo(
     () => buildHeatmap(ledger, today, FULL_HISTORY_WEEKS),
     [ledger, today],
   );
   const totals = useMemo(() => heatmapTotals(grid), [grid]);
 
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    const focusable = () => Array.from(panel?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ) ?? []);
+    focusable()[0]?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const controls = focusable();
+      if (!controls.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, [onClose]);
+
   return (
-    <div
+    <motion.div
       className="stats-overlay"
       data-testid="stats-overlay"
       role="dialog"
+      aria-modal="true"
       aria-label="Full result history"
+      initial={reduceMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
+      transition={{ duration: reduceMotion ? 0 : 0.2 }}
     >
-      <div className="stats-overlay__panel">
+      <motion.div
+        className="stats-overlay__panel"
+        ref={panelRef}
+        initial={reduceMotion ? false : { opacity: 0, y: 16, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 8, scale: 0.99 }}
+        transition={{ duration: reduceMotion ? 0 : 0.24, ease: "easeOut" }}
+      >
         <p className="end-screen__kicker" aria-hidden="true">
           // RECORD — 12 MONTHS
         </p>
@@ -84,7 +133,7 @@ export function StatsOverlay({
         >
           CLOSE
         </button>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

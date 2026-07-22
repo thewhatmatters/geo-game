@@ -27,15 +27,24 @@ export function Keyboard({ guesses, onGuess, disabled = false }: KeyboardProps) 
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
-      if (disabled || !/^[a-zA-Z]$/.test(event.key)) return;
-      onGuess(event.key.toUpperCase());
+      const target = event.target as HTMLElement | null;
+      if (
+        disabled ||
+        event.repeat ||
+        target?.isContentEditable ||
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        !/^[a-zA-Z]$/.test(event.key)
+      ) return;
+      const letter = event.key.toUpperCase();
+      if (!guesses[letter]) onGuess(letter);
     }
     window.addEventListener("keydown", handleKeydown);
     return () => window.removeEventListener("keydown", handleKeydown);
-  }, [disabled, onGuess]);
+  }, [disabled, guesses, onGuess]);
 
   return (
-    <div className="keyboard">
+    <div className="keyboard" role="group" aria-label="Letter keyboard">
       {ROWS.map((row) => (
         <div className="keyboard__row" key={row}>
           {row.split("").map((letter) => {

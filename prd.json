@@ -345,8 +345,8 @@
         "Typecheck passes"
       ],
       "priority": 20,
-      "passes": false,
-      "notes": "Suggested skills: automate-browser, audit-ui. Final gate story - this is the evidence package the branch competition is judged on."
+      "passes": true,
+      "notes": "Polish QA completed: reduced-motion disables or instantly resolves CSS/Framer animations, confetti, and map pulses; overlays have smooth entrances plus keyboard focus management and Escape close; responsive Chromium checks at 320x568, 390x844, 1280x800, and 3840x2160 found no non-SVG element overflow. Empty fun facts and missing neighbors render no placeholders; pan/zoom remain clamped; long names flex safely; locked_out uses the explicit denied outcome UI. 295 tests, npm run build, and npx tsc --noEmit pass. Browser review artifacts: /tmp/us-020-review/."
     }
   ]
 }

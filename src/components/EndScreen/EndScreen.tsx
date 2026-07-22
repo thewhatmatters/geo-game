@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { RoundStatus, ScoreEvent } from "../../lib/game/round";
 import {
   buildScoreBreakdown,
@@ -121,6 +122,7 @@ export function EndScreen({
   saveCode,
   onImportCode,
 }: EndScreenProps) {
+  const reduceMotion = useReducedMotion();
   const breakdown = useMemo(
     () =>
       buildScoreBreakdown({
@@ -185,14 +187,22 @@ export function EndScreen({
   }, [shareString]);
 
   return (
-    <div
+    <motion.div
       className="end-screen"
       data-testid="end-screen"
       data-outcome={status}
       role="dialog"
       aria-label={headline}
+      initial={reduceMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: reduceMotion ? 0 : 0.25 }}
     >
-      <div className="end-screen__panel">
+      <motion.div
+        className="end-screen__panel"
+        initial={reduceMotion ? false : { opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: reduceMotion ? 0 : 0.32, ease: "easeOut" }}
+      >
         <p
           className={`end-screen__headline${isSolve ? " end-screen__headline--granted" : " end-screen__headline--denied"}`}
           data-testid="end-screen-headline"
@@ -323,17 +333,19 @@ export function EndScreen({
             <span className="end-screen__countdown-value">{countdown}</span>
           </p>
         </div>
-      </div>
-      {showStats && (
-        <StatsOverlay
+      </motion.div>
+      <AnimatePresence>
+        {showStats && (
+          <StatsOverlay
           ledger={ledger}
           trophyMap={trophyMap}
           today={today}
           saveCode={saveCode}
           onImportCode={onImportCode}
           onClose={() => setShowStats(false)}
-        />
-      )}
-    </div>
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

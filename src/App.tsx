@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
+import { prefersReducedMotion } from "./lib/ui/motion";
 import { Keyboard } from "./components/Keyboard";
 import { CountryPath } from "./components/CountryOutline";
 import { NeighborsLayer } from "./components/NeighborsLayer";
@@ -155,6 +156,7 @@ function clampPan(
 
 function App({ boot }: { boot: RoundBoot }) {
   const { daily, scene, dayNumber } = boot;
+  const reduceMotion = useReducedMotion();
 
   // Center of the scene's viewBox — zooming out scales the map content
   // around this fixed point, so the target stays centered regardless of
@@ -236,6 +238,8 @@ function App({ boot }: { boot: RoundBoot }) {
   useEffect(() => {
     if (!isSolveStatus(round.status) || confettiFiredRef.current) return;
     confettiFiredRef.current = true;
+    // Prefer-reduced-motion: skip particle celebration entirely.
+    if (prefersReducedMotion()) return;
     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
   }, [round.status]);
 
@@ -249,9 +253,10 @@ function App({ boot }: { boot: RoundBoot }) {
   useEffect(() => {
     if (crossedZoomSteps > prevCrossedStepsRef.current) {
       prevCrossedStepsRef.current = crossedZoomSteps;
-      setZoomPulseStep(crossedZoomSteps);
+      // Pulse is decorative; reduced-motion users skip the animation entirely.
+      if (!reduceMotion) setZoomPulseStep(crossedZoomSteps);
     }
-  }, [crossedZoomSteps]);
+  }, [crossedZoomSteps, reduceMotion]);
 
   // Re-clamps whenever the zoom level shrinks the allowed pan budget (radius
   // or vertical range) so a subsequent drag starts from a valid position
@@ -516,7 +521,7 @@ function App({ boot }: { boot: RoundBoot }) {
               px from the viewport center (the zoom pivot) no matter how far
               out the player is. Remounts per step via the key, restarting
               the animation; unmounts when done to keep the DOM clean. */}
-          {zoomPulseStep > 0 && (
+          {zoomPulseStep > 0 && !reduceMotion && (
             <motion.circle
               key={zoomPulseStep}
               data-testid="zoom-pulse"
@@ -610,7 +615,11 @@ function App({ boot }: { boot: RoundBoot }) {
                   : ROUND_DURATION_SECONDS
               }
             />
-            <AnswerDisplay words={splitIntoWordGroups(round.displayChars)} guesses={round.guesses} />
+            <AnswerDisplay
+              words={splitIntoWordGroups(round.displayChars)}
+              guesses={round.guesses}
+              nameLength={daily.target.name.replace(/[^a-zA-Z]/g, "").length}
+            />
             {/* Keyboard + give-up leave the surface once the round ends —
                 Act 1's score recap takes that space (EndScreen below). */}
             {round.status === "running" && (

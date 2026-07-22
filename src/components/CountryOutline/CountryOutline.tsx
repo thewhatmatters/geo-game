@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { pathBounds, boundsToViewBox } from "../../lib/geo/pathBounds";
+import { motionDuration } from "../../lib/ui/motion";
 
 /** Smooths the ~200ms clock-tick increments of the normal draw-in. */
 const DRAW_TRANSITION_SECONDS = 0.3;
@@ -34,6 +35,7 @@ export function CountryPath({
   strokeWidth = 1.5,
   fillColor = "none",
 }: CountryPathProps) {
+  const reduceMotion = useReducedMotion();
   const pathLength = Math.min(100, Math.max(0, completion)) / 100;
 
   // Previous completion (0-1), tracked to detect the terminal-closure jump.
@@ -42,6 +44,11 @@ export function CountryPath({
   useEffect(() => {
     prevPathLengthRef.current = pathLength;
   }, [pathLength]);
+
+  const duration = motionDuration(
+    isClosureJump ? CLOSURE_TRANSITION_SECONDS : DRAW_TRANSITION_SECONDS,
+    reduceMotion,
+  );
 
   return (
     <motion.path
@@ -55,10 +62,10 @@ export function CountryPath({
       animate={{ pathLength, pathSpacing: 1 }}
       transition={
         isClosureJump
-          ? { duration: CLOSURE_TRANSITION_SECONDS, ease: "easeOut" }
-          : { duration: DRAW_TRANSITION_SECONDS, ease: "linear" }
+          ? { duration, ease: "easeOut" }
+          : { duration, ease: "linear" }
       }
-      style={{ transition: "fill 0.6s ease" }}
+      style={{ transition: reduceMotion ? "none" : "fill 0.6s ease" }}
     />
   );
 }

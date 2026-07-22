@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { RoundStatus, ScoreEvent } from "../../lib/game/round";
 import {
   buildScoreBreakdown,
@@ -12,6 +13,7 @@ import { TrophyMap } from "../TrophyMap";
 import { COMPACT_WEEKS, buildHeatmap } from "../../lib/stats/heatmap";
 import { getAllCountries, type CountryCode } from "../../lib/game/dailyCountry";
 import type { LedgerEntry, TrophyMapEntry } from "../../lib/storage/outcomes";
+import { prefersReducedMotion } from "../../lib/ui/motion";
 
 /**
  * End screen — the post-round surface, in two acts.
@@ -84,11 +86,6 @@ function amountTone(line: BreakdownLine): "positive" | "negative" | "neutral" | 
   return "neutral";
 }
 
-function prefersReducedMotion(): boolean {
-  if (typeof window === "undefined" || !window.matchMedia) return false;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
 /**
  * Live HH:MM:SS until the next local-midnight round. Reads the wall clock
  * (the one place post-round that has to) and re-samples every second rather
@@ -121,6 +118,7 @@ export function EndScreen({
   saveCode,
   onImportCode,
 }: EndScreenProps) {
+  const reduceMotion = useReducedMotion();
   const breakdown = useMemo(
     () =>
       buildScoreBreakdown({
@@ -134,6 +132,7 @@ export function EndScreen({
 
   const headline = outcomeHeadline(status, dayNumber);
   const isSolve = status === "solved" || status === "solved_late";
+  const isLockedOut = status === "locked_out";
 
   // Progressive reveal via staggered mount. Reduced-motion jumps straight
   // to the full list. CSS handles the entrance animation (transform/opacity
@@ -184,17 +183,35 @@ export function EndScreen({
     }
   }, [shareString]);
 
+  const enter = reduceMotion
+    ? { opacity: 1 }
+    : { opacity: 0 };
+  const entered = { opacity: 1 };
+  const panelEnter = reduceMotion
+    ? { opacity: 1, y: 0 }
+    : { opacity: 0, y: 12 };
+  const panelEntered = { opacity: 1, y: 0 };
+
   return (
-    <div
-      className="end-screen"
+    <motion.div
+      className={`end-screen${isLockedOut ? " end-screen--locked-out" : ""}`}
       data-testid="end-screen"
       data-outcome={status}
       role="dialog"
+      aria-modal="true"
       aria-label={headline}
+      initial={enter}
+      animate={entered}
+      transition={{ duration: reduceMotion ? 0 : 0.28, ease: "easeOut" }}
     >
-      <div className="end-screen__panel">
+      <motion.div
+        className="end-screen__panel"
+        initial={panelEnter}
+        animate={panelEntered}
+        transition={{ duration: reduceMotion ? 0 : 0.32, ease: "easeOut" }}
+      >
         <p
-          className={`end-screen__headline${isSolve ? " end-screen__headline--granted" : " end-screen__headline--denied"}`}
+          className={`end-screen__headline${isSolve ? " end-screen__headline--granted" : " end-screen__headline--denied"}${isLockedOut ? " end-screen__headline--lockout" : ""}`}
           data-testid="end-screen-headline"
         >
           {headline}
@@ -323,17 +340,20 @@ export function EndScreen({
             <span className="end-screen__countdown-value">{countdown}</span>
           </p>
         </div>
-      </div>
-      {showStats && (
-        <StatsOverlay
-          ledger={ledger}
-          trophyMap={trophyMap}
-          today={today}
-          saveCode={saveCode}
-          onImportCode={onImportCode}
-          onClose={() => setShowStats(false)}
-        />
-      )}
-    </div>
+      </motion.div>
+      <AnimatePresence>
+        {showStats && (
+          <StatsOverlay
+            key="stats-overlay"
+            ledger={ledger}
+            trophyMap={trophyMap}
+            today={today}
+            saveCode={saveCode}
+            onImportCode={onImportCode}
+            onClose={() => setShowStats(false)}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

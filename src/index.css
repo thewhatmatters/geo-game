@@ -165,6 +165,32 @@ body {
   transition: transform 0.25s ease-out;
 }
 
+/* Global keyboard focus ring — only on :focus-visible so mouse clicks
+   don't paint a ring on every press. Shared white hairline matches the
+   monochrome chrome; interactive surfaces can override if needed. */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+}
+
+/* Neighbor label letter reveal — CSS so reduced-motion can kill it. */
+.neighbor-label__char {
+  transition: fill 0.3s ease;
+}
+
 /* Top-left, paired with .score-readout's top-right — deliberately NOT
    bottom-right anymore: that pinned it directly over the on-screen
    keyboard's bottom row on phone-height viewports (the keyboard's own
@@ -236,10 +262,10 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Only mounted when the combo is actually boosting (> x1), so its mere
-   presence is the "visually distinct above x1" signal — reinforced with a
-   pill in the app's single green accent (the same green the correct keys
-   use; red stays reserved for negative score events). */
+/* Always mounted (idle at x1 is invisible) so the badge never shifts the
+   score numeral when the combo steps up — layout stability for US-020.
+   Visually distinct only when boosted: green pill, same accent as correct
+   keys; red stays reserved for negative score events. */
 .score-readout__multiplier {
   padding: 0.1rem 0.4rem;
   border-radius: 999px;
@@ -249,7 +275,18 @@ body {
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0.02em;
+  min-width: 2.4rem;
+  text-align: center;
+  box-sizing: border-box;
   animation: score-multiplier-pop 0.25s ease-out;
+}
+
+.score-readout__multiplier--idle {
+  visibility: hidden;
+  background: transparent;
+  color: transparent;
+  animation: none;
+  /* Keep the reserved width from min-width above so the score doesn't jump. */
 }
 
 @keyframes score-multiplier-pop {
@@ -539,7 +576,12 @@ body {
   letter-spacing: 0.16em;
   color: rgba(255, 255, 255, 0.8);
   text-shadow: 0 0 12px rgba(0, 0, 0, 0.95);
-  white-space: nowrap;
+  /* Allow wrap on 320px — nowrap clipped "SYSTEM LOCKOUT IN N ATTEMPTS". */
+  white-space: normal;
+  text-align: center;
+  max-width: min(92vw, 22rem);
+  padding: 0 0.25rem;
+  box-sizing: border-box;
 }
 
 @keyframes lockout-in {
@@ -590,6 +632,11 @@ body {
   justify-content: center;
   align-items: center;
   gap: 0.6rem;
+  /* Cap width so multi-word names wrap inside the solve panel rather than
+     shoving past the viewport edges on 320px phones. */
+  max-width: 100%;
+  /* Fixed min-height avoids vertical layout shift when a letter lands. */
+  min-height: 2.35rem;
 }
 
 /* One bordered, rounded-corner group per word (see splitIntoWordGroups in
@@ -602,11 +649,16 @@ body {
   border-radius: 8px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.04);
+  max-width: 100%;
+  flex-wrap: wrap;
 }
 
 .display-name__cell {
+  /* Fixed box so empty vs revealed letters never resize the row (CLS). */
   min-width: 1.75rem;
+  width: 1.75rem;
   height: 2.35rem;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -614,10 +666,40 @@ body {
   font-size: 1.35rem;
   font-weight: 500;
   border-right: 1px solid rgba(255, 255, 255, 0.38);
+  box-sizing: border-box;
 }
 
 .display-name__cell:last-child {
   border-right: none;
+}
+
+/* Density steps for long country names — shrink cells, not the whole panel. */
+.display-name--md .display-name__cell {
+  min-width: 1.5rem;
+  width: 1.5rem;
+  height: 2.1rem;
+  font-size: 1.15rem;
+}
+
+.display-name--lg .display-name__cell {
+  min-width: 1.25rem;
+  width: 1.25rem;
+  height: 1.85rem;
+  font-size: 1rem;
+}
+
+.display-name--xl .display-name__cell {
+  min-width: 1.05rem;
+  width: 1.05rem;
+  height: 1.65rem;
+  font-size: 0.85rem;
+}
+
+.display-name--md,
+.display-name--lg,
+.display-name--xl {
+  gap: 0.35rem;
+  min-height: 1.65rem;
 }
 
 .display-name__letter {
@@ -732,6 +814,10 @@ body {
 .end-screen__panel {
   pointer-events: auto;
   width: min(92vw, 22rem);
+  max-height: min(90vh, 52rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 1.15rem 1.25rem 1.25rem;
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 6px;
@@ -739,6 +825,21 @@ body {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 12px 40px rgba(0, 0, 0, 0.55);
   font-family: "Geist Mono", monospace;
   text-align: left;
+}
+
+/* Locked-out terminal state: slightly harsher border so the outcome is
+   readable at a glance without relying on the headline colour alone. */
+.end-screen--locked-out .end-screen__panel {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(224, 85, 85, 0.25),
+    0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
+.end-screen__headline--lockout {
+  color: #e05555;
+  letter-spacing: 0.1em;
 }
 
 .end-screen__headline {
@@ -1479,6 +1580,131 @@ button.heatmap__cell:focus-visible {
   .trophy-map__marker--new {
     animation: none !important;
   }
+
+  .pan-snap {
+    transition: none !important;
+  }
+
+  .score-delta,
+  .score-readout__multiplier,
+  .streak__freezes--earned,
+  .lockout {
+    animation: none !important;
+  }
+
+  .neighbor-label__char {
+    transition: none !important;
+  }
+
+  .trivia-overlay,
+  .end-screen__copy,
+  .zoom-controls {
+    transition: none !important;
+  }
+
+  /* Instant fill/draw for any remaining CSS transitions. */
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Responsive breakpoints (320px → 4K) ──────────────────────────────────
+   Chrome-only tuning: the map is fixed full-viewport and self-scales.
+   Goal: no horizontal overflow, no overlapping fixed UI, long names wrap. */
+
+/* Very small phones (iPhone SE portrait floor ≈ 320px). */
+@media (max-width: 360px) {
+  .app {
+    padding: 0.5rem 0.5rem;
+  }
+
+  .app__top,
+  .app__bottom {
+    width: min(100vw - 0.5rem, 900px);
+  }
+
+  .zoom-controls {
+    left: 0.4rem;
+    top: 0.5rem;
+    gap: 0.25rem;
+  }
+
+  .zoom-controls__button {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.95rem;
+  }
+
+  .score-readout {
+    top: 0.5rem;
+    right: 0.4rem;
+  }
+
+  .score-readout__value {
+    font-size: 1.2rem;
+  }
+
+  .score-readout__multiplier {
+    font-size: 0.75rem;
+    min-width: 2rem;
+    padding: 0.08rem 0.28rem;
+  }
+
+  .keyboard__key {
+    min-width: clamp(1.45rem, 7.5vw, 2.2rem);
+    min-height: clamp(1.45rem, 7.5vw, 2.2rem);
+    padding: 0.35rem 0;
+    border-radius: 8px;
+  }
+
+  .display-name__cell {
+    min-width: 1.15rem;
+    width: 1.15rem;
+    height: 1.75rem;
+    font-size: 0.95rem;
+  }
+
+  .display-name--md .display-name__cell,
+  .display-name--lg .display-name__cell,
+  .display-name--xl .display-name__cell {
+    min-width: 0.95rem;
+    width: 0.95rem;
+    height: 1.5rem;
+    font-size: 0.78rem;
+  }
+
+  .lockout__label {
+    font-size: 0.55rem;
+    letter-spacing: 0.08em;
+  }
+
+  .end-screen {
+    padding: 0.5rem;
+  }
+
+  .end-screen__panel {
+    width: min(96vw, 22rem);
+    padding: 0.85rem 0.75rem 1rem;
+  }
+
+  .end-screen__headline {
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+  }
+
+  .trivia-overlay {
+    width: min(96vw, 28rem);
+  }
+
+  .trivia-overlay__question {
+    font-size: 0.88rem;
+  }
+
+  .trivia-overlay__fun-fact {
+    font-size: 0.68rem;
+  }
 }
 
 /* Phone viewports: the pinned top/bottom panels (title/streak/clock above,
@@ -1489,7 +1715,7 @@ button.heatmap__cell:focus-visible {
    corner controls (.score-readout, .zoom-controls) don't move. */
 @media (max-width: 480px) {
   .app {
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 0.75rem;
   }
 
   /* The mono wordmark is already small; only its trailing margin needs
@@ -1547,6 +1773,7 @@ button.heatmap__cell:focus-visible {
      ~30px-tall row; verified 1.4rem still wraps there. */
   .display-name__cell {
     min-width: 1.3rem;
+    width: 1.3rem;
     height: 2rem;
     font-size: 1.1rem;
   }
@@ -1563,5 +1790,117 @@ button.heatmap__cell:focus-visible {
   .give-up {
     margin-top: 0.6rem;
     padding: 0.35rem 1rem;
+  }
+
+  .dot-matrix {
+    gap: 0.35rem;
+    padding: 0.35rem 0.45rem;
+  }
+
+  .dot-matrix__digit {
+    grid-template-columns: repeat(5, 4px);
+    grid-template-rows: repeat(7, 4px);
+    gap: 1.5px;
+  }
+
+  .dot-matrix__dot {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+/* Short landscape / foldable heights: keep chrome from eating the map. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .app {
+    padding: 0.4rem 0.75rem;
+  }
+
+  .app__top h1,
+  .streak,
+  .streak__notice {
+    display: none;
+  }
+
+  .dot-matrix {
+    transform: scale(0.85);
+    transform-origin: top center;
+  }
+
+  .trivia-overlay {
+    margin-bottom: 0.25rem;
+  }
+
+  .trivia-overlay__fun-fact {
+    display: none;
+  }
+
+  .give-up {
+    margin-top: 0.35rem;
+    padding: 0.25rem 0.75rem;
+  }
+
+  .keyboard {
+    margin-top: 0.2rem;
+    gap: 0.15rem;
+  }
+
+  .keyboard__key {
+    min-height: 1.5rem;
+    padding: 0.25rem 0;
+  }
+}
+
+/* Large desktop / 4K: cap chrome scale so the UI doesn't look sparse and
+   the keyboard/score stay near the play area rather than edges of a 4K. */
+@media (min-width: 1600px) {
+  .app {
+    padding: 2rem 1.5rem;
+  }
+
+  .app__top,
+  .app__bottom {
+    width: min(70vw, 56rem);
+  }
+
+  .score-readout {
+    top: 1.25rem;
+    right: 1.5rem;
+  }
+
+  .score-readout__value {
+    font-size: 2.15rem;
+  }
+
+  .zoom-controls {
+    left: 1.5rem;
+    top: 1.25rem;
+  }
+
+  .zoom-controls__button {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .end-screen__panel {
+    width: min(36rem, 40vw);
+  }
+
+  .stats-overlay__panel {
+    width: min(56rem, 70vw);
+  }
+}
+
+@media (min-width: 2560px) {
+  .score-readout__value {
+    font-size: 2.4rem;
+  }
+
+  .trivia-overlay__question {
+    font-size: 1.2rem;
+  }
+
+  .keyboard__key {
+    min-width: 3rem;
+    min-height: 3rem;
   }
 }

@@ -5,10 +5,16 @@ import type { DisplayChar, LetterState } from "../../lib/game/useGameRound";
 export interface AnswerDisplayProps {
   words: DisplayChar[][];
   guesses: Record<string, LetterState>;
+  /**
+   * Letter count of the target name (non-letters stripped). Drives a density
+   * class so very long names (e.g. "South Georgia and the South Sandwich
+   * Islands") shrink cells instead of overflowing the bottom panel.
+   */
+  nameLength?: number;
 }
 
 /** Answer slots plus the shared reject surface for an incorrect guess. */
-export function AnswerDisplay({ words, guesses }: AnswerDisplayProps) {
+export function AnswerDisplay({ words, guesses, nameLength = 0 }: AnswerDisplayProps) {
   const reduceMotion = useReducedMotion();
   const previousGuesses = useRef(guesses);
   const latestGuess = Object.keys(guesses).find((letter) => !previousGuesses.current[letter]);
@@ -18,9 +24,12 @@ export function AnswerDisplay({ words, guesses }: AnswerDisplayProps) {
     previousGuesses.current = guesses;
   }, [guesses]);
 
+  const density =
+    nameLength >= 28 ? "xl" : nameLength >= 18 ? "lg" : nameLength >= 12 ? "md" : "sm";
+
   return (
     <motion.div
-      className="display-name"
+      className={`display-name display-name--${density}`}
       data-testid="display-name"
       data-feedback={rejected ? "reject" : undefined}
       animate={

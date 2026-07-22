@@ -139,7 +139,7 @@
       ],
       "priority": 8,
       "passes": true,
-      "notes": "ZOOM_SENSITIVITY 0.0015 → 0.004 (~0.40 zoom per typical 100 deltaY notch vs old 0.15). Buttons stay ZOOM_STEP via BUTTON_ZOOM_DELTA = ZOOM_STEP/ZOOM_SENSITIVITY. Step-crossing covered in zoom.test.ts. Browser: one notch +0.4, button +0.5, mid-round wheel ok (tmp/us-008/)."
+      "notes": "ZOOM_SENSITIVITY 0.0015 \u2192 0.004 (~0.40 zoom per typical 100 deltaY notch vs old 0.15). Buttons stay ZOOM_STEP via BUTTON_ZOOM_DELTA = ZOOM_STEP/ZOOM_SENSITIVITY. Step-crossing covered in zoom.test.ts. Browser: one notch +0.4, button +0.5, mid-round wheel ok (tmp/us-008/)."
     },
     {
       "id": "US-009",
@@ -294,7 +294,7 @@
       ],
       "priority": 17,
       "passes": true,
-      "notes": "Suggested skills: automate-browser, build-ui. Seed test data through localStorage in the automation script to show all states. Grid aesthetic is deeply on-theme - keep it terminal-clean. DONE: pure grid model in src/lib/stats/heatmap.ts (UTC day math, columns=weeks/rows=days); Heatmap component + StatsOverlay. Entry point: end screen Act 2 embeds a 12-week window; 'FULL HISTORY' button opens the 53-week (12-month) stats overlay (overlay, not a route — no router in the app). Failed=✕, frozen=❄ glyphs so the encoding isn't color-only. Verified in Chrome via Playwright with ?date=2026-07-21 + a seeded 300-day ledger: all five states render, today's cell reflects the just-recorded outcome, tap readout works."
+      "notes": "Suggested skills: automate-browser, build-ui. Seed test data through localStorage in the automation script to show all states. Grid aesthetic is deeply on-theme - keep it terminal-clean. DONE: pure grid model in src/lib/stats/heatmap.ts (UTC day math, columns=weeks/rows=days); Heatmap component + StatsOverlay. Entry point: end screen Act 2 embeds a 12-week window; 'FULL HISTORY' button opens the 53-week (12-month) stats overlay (overlay, not a route \u2014 no router in the app). Failed=\u2715, frozen=\u2744 glyphs so the encoding isn't color-only. Verified in Chrome via Playwright with ?date=2026-07-21 + a seeded 300-day ledger: all five states render, today's cell reflects the just-recorded outcome, tap readout works."
     },
     {
       "id": "US-018",
@@ -345,8 +345,8 @@
         "Typecheck passes"
       ],
       "priority": 20,
-      "passes": false,
-      "notes": "Suggested skills: automate-browser, audit-ui. Final gate story - this is the evidence package the branch competition is judged on."
+      "passes": true,
+      "notes": "Evidence in review/us-020/ (screenshots + NOTES.md). Polish: prefers-reduced-motion, responsive 320\u20134K, overlay transitions, keyboard a11y (Escape/focus-visible), layout-shift guards, locked_out UI. Four outcomes + multi-day freeze sequence verified in browser. npm test 303 green; tsc + build clean."
     }
   ]
 }

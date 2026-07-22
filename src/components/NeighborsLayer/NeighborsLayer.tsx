@@ -92,7 +92,7 @@ export function NeighborsLayer({ slots, completion, strokeWidth, labelFontSize, 
                   <tspan
                     key={i}
                     fill={c.revealed ? REVEALED_COLOR : NEIGHBOR_COLOR}
-                    style={{ transition: "fill 0.3s ease" }}
+                    className="neighbor-label__char"
                   >
                     {c.char}
                   </tspan>

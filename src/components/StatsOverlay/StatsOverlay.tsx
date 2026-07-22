@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Heatmap } from "../Heatmap";
 import { TrophyMap } from "../TrophyMap";
 import {
@@ -16,6 +17,9 @@ import type { LedgerEntry, TrophyMapEntry } from "../../lib/storage/outcomes";
  * Reached as an OVERLAY from the end screen's "FULL HISTORY" button rather
  * than a route: the app is a single fixed-viewport surface with no router,
  * and an overlay keeps the post-round map exploration underneath intact.
+ *
+ * Keyboard: Escape closes; initial focus lands on CLOSE so Tab order starts
+ * inside the dialog; focus returns to the opener on unmount.
  */
 
 export interface StatsOverlayProps {
@@ -42,20 +46,55 @@ export function StatsOverlay({
   onImportCode,
   onClose,
 }: StatsOverlayProps) {
+  const reduceMotion = useReducedMotion();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
   const grid = useMemo(
     () => buildHeatmap(ledger, today, FULL_HISTORY_WEEKS),
     [ledger, today],
   );
   const totals = useMemo(() => heatmapTotals(grid), [grid]);
 
+  // Escape closes; focus enters on CLOSE and restores on unmount so keyboard
+  // users aren't stranded on a detached node when the overlay goes away.
+  useEffect(() => {
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeRef.current?.focus();
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      previousFocusRef.current?.focus?.();
+    };
+  }, [onClose]);
+
   return (
-    <div
+    <motion.div
       className="stats-overlay"
       data-testid="stats-overlay"
       role="dialog"
+      aria-modal="true"
       aria-label="Full result history"
+      initial={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
+      transition={{ duration: reduceMotion ? 0 : 0.22, ease: "easeOut" }}
     >
-      <div className="stats-overlay__panel">
+      <motion.div
+        className="stats-overlay__panel"
+        initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+        transition={{ duration: reduceMotion ? 0 : 0.26, ease: "easeOut" }}
+      >
         <p className="end-screen__kicker" aria-hidden="true">
           // RECORD — 12 MONTHS
         </p>
@@ -77,6 +116,7 @@ export function StatsOverlay({
           <SaveCode code={saveCode} onImport={onImportCode} />
         ) : null}
         <button
+          ref={closeRef}
           type="button"
           className="end-screen__copy"
           data-testid="stats-overlay-close"
@@ -84,7 +124,7 @@ export function StatsOverlay({
         >
           CLOSE
         </button>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

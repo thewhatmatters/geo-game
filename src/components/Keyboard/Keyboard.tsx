@@ -47,6 +47,13 @@ export function Keyboard({ guesses, onGuess, disabled = false }: KeyboardProps) 
                 className={`keyboard__key${state ? ` keyboard__key--${state}` : ""}`}
                 disabled={disabled || Boolean(state)}
                 onClick={() => onGuess(letter)}
+                aria-label={
+                  state === "correct"
+                    ? `${letter}, correct`
+                    : state === "wrong"
+                      ? `${letter}, wrong`
+                      : letter
+                }
                 animate={
                   !reduceMotion && latestGuess === letter && state === "wrong"
                     ? { x: [0, -5, 5, -3, 3, 0], backgroundColor: ["#f2f2f2", "#8f2525", "#2a2a2a"] }

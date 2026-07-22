@@ -78,6 +78,10 @@ export function ScoreReadout({ score, multiplier, scoreEvent }: ScoreReadoutProp
   }, []);
 
   const boosted = multiplier > 1;
+  // Fixed character width so 0 → 500 → 1240 never shoves the left edge (or
+  // the multiplier badge) — tabular-nums alone still changes box width when
+  // digit count changes; ch units pin the reserved slot.
+  const scoreWidthCh = Math.max(4, String(score).length);
 
   return (
     <div className="score-readout" data-testid="score-display">
@@ -87,12 +91,26 @@ export function ScoreReadout({ score, multiplier, scoreEvent }: ScoreReadoutProp
           shrinks to a quiet intrusion-log kicker above it. */}
       <span className="score-readout__label">SCORE</span>
       <span className="score-readout__row">
-        <span className="score-readout__value">{score}</span>
-        {boosted && (
-          <span className="score-readout__multiplier" data-testid="score-multiplier">
-            ×{multiplier}
-          </span>
-        )}
+        <span
+          className="score-readout__value"
+          style={{ minWidth: `${scoreWidthCh}ch` }}
+        >
+          {score}
+        </span>
+        {/* Always mount the badge slot so x1 → x1.5 never shifts the score
+            numeral. Visibility (not display:none / conditional mount) keeps
+            layout stable while the boost state is still announced only when
+            actually above x1. */}
+        <span
+          className={
+            "score-readout__multiplier" +
+            (boosted ? "" : " score-readout__multiplier--idle")
+          }
+          data-testid="score-multiplier"
+          aria-hidden={!boosted}
+        >
+          {boosted ? `×${multiplier}` : "×1"}
+        </span>
       </span>
       {/* aria-hidden: the popups are a transient decorative echo of a change
           the score value itself already reflects — announcing each one would

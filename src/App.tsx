@@ -10,15 +10,13 @@ import { TriviaOverlay } from "./components/TriviaOverlay";
 import { ShareResult } from "./components/ShareResult";
 import { DotMatrixNumber } from "./components/DotMatrixNumber";
 import { getAllCountries } from "./lib/game/dailyCountry";
-import { useGameRound } from "./lib/game/useGameRound";
-import type { DisplayChar } from "./lib/game/useGameRound";
+import { useGameRound, splitIntoWordGroups } from "./lib/game/useGameRound";
 import type { RoundBoot } from "./lib/game/boot";
 import { ZOOM_MIN, ZOOM_SENSITIVITY, ZOOM_STEP, zoomStepsCrossed } from "./lib/game/zoom";
-import { clampWorldCenterY, worldExtentY } from "./lib/geo/scene";
-import { viewBoxSize } from "./lib/geo/pathBounds";
+import { computeCamera, clampPan, computeWorldReveal } from "./lib/geo/camera";
 import { useStreak } from "./lib/streak/useStreak";
 import { generateShareString } from "./lib/share";
-import { computeScore, SCORE_SECONDS_MULTIPLIER } from "./lib/game/score";
+import { computeScore, scoreEventPoints } from "./lib/game/score";
 
 // Desired on-screen sizes (px) for the target outline stroke and neighbor
 // labels, converted to viewBox user-units via the scene's pxScale so they
@@ -58,22 +56,6 @@ const TARGET_FILL_HIDDEN = "rgba(255, 255, 255, 0)";
 const BUTTON_ZOOM_DELTA = ZOOM_STEP / ZOOM_SENSITIVITY;
 
 /**
- * ABSOLUTE zoom-out units (zoom - ZOOM_MIN) over which the world layer's
- * reveal opacity ramps from 0 to full. Deliberately NOT a fraction of the
- * scene's full zoom range: maxZoom is derived from the target's viewBox
- * size, so on tiny-target days it's enormous (hundreds), and a
- * fraction-of-range opacity collapses to ~0 for the first several paid
- * zoom steps — the player pays -5s per step and sees nothing change. Keyed
- * to absolute units, every step produces a visible brightness delta on
- * every day-size. Tuned so the first two paid button steps are each
- * unmistakable at a glance: step 1 (zoom 1.5) lands at 0.5/1.1 ≈ 0.45
- * revealed, step 2 (zoom 2.0) at 1.0/1.1 ≈ 0.91, and step 3+ is fully
- * saturated. The reveal RADIUS still scales with the full range (see
- * zoomProgress below), preserving the radial near-target-first character.
- */
-const WORLD_REVEAL_OPACITY_ZOOM_SPAN = 1.1;
-
-/**
  * One-shot "reveal pulse" — an expanding, fading white ring detonating
  * from the map center each time the player's max zoom-out crosses a NEW
  * ZOOM_STEP boundary (the exact same crossing the -5s penalty and its -50
@@ -90,17 +72,6 @@ const ZOOM_PULSE_STROKE_END_PX = 1;
 /** Ring opacity at detonation, fading to 0 — white/gray only, per the dark theme. */
 const ZOOM_PULSE_PEAK_OPACITY = 0.7;
 
-/**
- * How far the player can drag-pan the view, expressed as a multiple of the
- * target's own base viewBox size per unit of zoom beyond ZOOM_MIN. At
- * ZOOM_MIN (no zoom-out yet) this is 0 — panning is disabled until you've
- * paid at least some zoom-out cost, since there's nothing extra revealed to
- * pan into yet. This deliberately keeps panning from being a free way to
- * peek at zoomed-in detail far from the target without ever crossing a
- * zoom-out penalty threshold.
- */
-const PAN_RADIUS_FACTOR = 0.5;
-
 /** How long the floating "+20"/"-150" score-delta popup stays on screen before fading out. */
 const SCORE_DELTA_DISPLAY_MS = 1200;
 
@@ -109,60 +80,8 @@ const SCORE_DELTA_DISPLAY_MS = 1200;
 // in via the RoundBoot prop).
 const allCountries = getAllCountries();
 
-// Splits the target name's per-character reveal state at space boundaries
-// into per-word groups — each group renders as its own bordered box row
-// (see .display-name__group), with a plain gap between words rather than a
-// boxed cell for the space itself.
-function splitIntoWordGroups(chars: DisplayChar[]): DisplayChar[][] {
-  const words: DisplayChar[][] = [];
-  let current: DisplayChar[] = [];
-  for (const c of chars) {
-    if (c.char === " ") {
-      if (current.length) words.push(current);
-      current = [];
-    } else {
-      current.push(c);
-    }
-  }
-  if (current.length) words.push(current);
-  return words;
-}
-
-/**
- * Bounds a pan vector two ways: overall magnitude to `radius` (the paid
- * zoom-out budget), then the y component into [yMin, yMax] — the range
- * within which the visible world-window stays inside the world's effective
- * vertical extent. Horizontal stays free within the radius (the world
- * wraps seamlessly there); vertical hard-stops at the poles, collapsing to
- * zero at full zoom-out where the window already spans the whole height.
- */
-function clampPan(
-  pan: { x: number; y: number },
-  radius: number,
-  yMin: number,
-  yMax: number,
-): { x: number; y: number } {
-  let { x, y } = pan;
-  const magnitude = Math.hypot(x, y);
-  if (radius <= 0) return { x: 0, y: 0 };
-  if (magnitude > radius) {
-    const scale = radius / magnitude;
-    x *= scale;
-    y *= scale;
-  }
-  return { x, y: Math.min(yMax, Math.max(yMin, y)) };
-}
-
 function App({ boot }: { boot: RoundBoot }) {
   const { daily, scene, dayNumber } = boot;
-
-  // Center of the scene's viewBox — zooming out scales the map content
-  // around this fixed point, so the target stays centered regardless of
-  // zoom level.
-  const [zoomOriginX, zoomOriginY] = useMemo(() => {
-    const [minX, minY, w, h] = scene.viewBox.split(" ").map(Number);
-    return [minX + w / 2, minY + h / 2];
-  }, [scene.viewBox]);
 
   // The target + its neighbors still get the world layer's opaque land-mask
   // fill (see WorldMapLayer) — only their STROKE is suppressed there, since
@@ -181,45 +100,20 @@ function App({ boot }: { boot: RoundBoot }) {
   const [verticalOffsetPx, setVerticalOffsetPx] = useState(0);
 
   // Drag-to-pan: an offset (viewBox units) added on top of the zoom pivot.
-  // Bounded by maxPanRadius below — see PAN_RADIUS_FACTOR — so panning can
-  // never show more than the player's current zoom level already paid for.
+  // Bounded by camera.maxPanRadius so panning can never show more than the
+  // player's current zoom level already paid for.
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStateRef = useRef<{ startClientX: number; startClientY: number; startPan: { x: number; y: number } } | null>(null);
-  const maxPanRadius = viewBoxSize(scene.viewBox) * (round.zoom - ZOOM_MIN) * PAN_RADIUS_FACTOR;
 
-  // Vertical world-edge clamp: the zoom pivots on the target, so a far-north/
-  // south target (Falklands, Iceland) would drag polar void into frame as the
-  // viewport's world-window approaches the world's height. Shift the content
-  // (in world units, inside the zoom transform) so the visible vertical
-  // window stays inside the world; zero until the window nears an edge, so
-  // default framing is untouched. Pairs with scene.ts's height-fit maxZoom
-  // (window never EXCEEDS the world's height) and WorldMapLayer's horizontal
-  // wrap (width overflow is seamless instead of clamped).
-  //
-  // The panel-centering offset participates too: it used to be a CSS
-  // translateY on the whole <svg>, which moved the svg's edges with it and
-  // re-exposed void past the clamped world edge. It's now an svg-internal
-  // pan-level shift (screen-space px → viewBox units via pxScale), so the
-  // svg always covers the full viewport and the clamp accounts for the
-  // world-center the offset actually puts on screen (a pan-level shift of
-  // dy moves the visible world center by -dy·zoom in world units). When the
-  // window hits a world edge, edge-pinning wins over gap-centering.
-  const panelOffsetUnits = verticalOffsetPx * scene.pxScale;
-  const visibleWorldHeight = boot.viewport.height * scene.pxScale * round.zoom;
-  const desiredWorldCenterY = zoomOriginY - panelOffsetUnits * round.zoom;
-  const clampedWorldCenterY = clampWorldCenterY(desiredWorldCenterY, visibleWorldHeight);
-  const worldShiftY = desiredWorldCenterY - clampedWorldCenterY;
-
-  // Vertical pan budget: a pan of dy moves the visible world-center by
-  // -dy·zoom, so these are the dy bounds that keep the window inside the
-  // world's effective extent (same range the resting clamp above enforces).
-  // At full zoom-out the window spans the whole height and both collapse
-  // to 0 — vertical drag locks while horizontal drag (which wraps) stays
-  // free. min/max guards absorb float error at exactly the ceiling.
-  const halfWindow = visibleWorldHeight / 2;
-  const panYMin = Math.min(0, (clampedWorldCenterY - (worldExtentY().bottom - halfWindow)) / round.zoom);
-  const panYMax = Math.max(0, (clampedWorldCenterY - (worldExtentY().top + halfWindow)) / round.zoom);
+  // All the view math — zoom pivot, vertical world-edge clamp, drag-pan
+  // budget — lives in lib/geo/camera.ts as a pure, tested function; this
+  // component just recomputes it when its inputs change and applies the
+  // resulting transforms/clamps below.
+  const camera = useMemo(
+    () => computeCamera(scene, boot.viewport.height, round.zoom, verticalOffsetPx),
+    [scene, boot.viewport.height, round.zoom, verticalOffsetPx],
+  );
 
   useEffect(() => {
     if (round.status === "running" || recordedRef.current) return;
@@ -246,7 +140,7 @@ function App({ boot }: { boot: RoundBoot }) {
   const [activeDelta, setActiveDelta] = useState<{ id: number; points: number } | null>(null);
   useEffect(() => {
     if (!round.scoreEvent) return;
-    setActiveDelta({ id: round.scoreEvent.id, points: round.scoreEvent.secondsDelta * SCORE_SECONDS_MULTIPLIER });
+    setActiveDelta({ id: round.scoreEvent.id, points: scoreEventPoints(round.scoreEvent) });
     const timer = setTimeout(() => setActiveDelta(null), SCORE_DELTA_DISPLAY_MS);
     return () => clearTimeout(timer);
   }, [round.scoreEvent]);
@@ -267,12 +161,12 @@ function App({ boot }: { boot: RoundBoot }) {
     }
   }, [paidZoomSteps]);
 
-  // Re-clamps whenever the zoom level shrinks the allowed pan budget (radius
+  // Re-clamps whenever the camera shrinks the allowed pan budget (radius
   // or vertical range) so a subsequent drag starts from a valid position
   // rather than jumping back into bounds all at once.
   useEffect(() => {
-    setPan((prev) => clampPan(prev, maxPanRadius, panYMin, panYMax));
-  }, [maxPanRadius, panYMin, panYMax]);
+    setPan((prev) => clampPan(camera, prev));
+  }, [camera]);
 
   useEffect(() => {
     const el = outlineRef.current;
@@ -303,8 +197,7 @@ function App({ boot }: { boot: RoundBoot }) {
     // — applied to the raw pointer delta, content tracks the cursor 1:1.
     const dx = (e.clientX - drag.startClientX) * scene.pxScale;
     const dy = (e.clientY - drag.startClientY) * scene.pxScale;
-    const next = { x: drag.startPan.x + dx, y: drag.startPan.y + dy };
-    setPan(clampPan(next, maxPanRadius, panYMin, panYMax));
+    setPan(clampPan(camera, { x: drag.startPan.x + dx, y: drag.startPan.y + dy }));
   }
 
   function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
@@ -338,30 +231,10 @@ function App({ boot }: { boot: RoundBoot }) {
     return () => window.removeEventListener("resize", recomputeOffset);
   }, [round.status]);
 
-  // Progress from 0 (default zoom) to 1 (zoomMax — fully zoomed out).
-  // Drives the reveal RADIUS only — the reveal OPACITY is keyed to
-  // absolute zoom-out units instead (see WORLD_REVEAL_OPACITY_ZOOM_SPAN),
-  // clamped to the scene's own range so large-target days (maxZoom near
-  // ZOOM_MIN — the range can be SHORTER than the fixed span) still reach
-  // full opacity at their max. The reveal stays RADIAL (not a flat fade),
-  // centered on the target — countries near the target fade in
-  // first/strongest, with the spotlight widening as the player zooms out.
-  //
-  // revealRadius is in the SAME pre-ambient-transform (world) coordinate
-  // space as the country paths, which is itself wrapped in the ambient
-  // <g scale(1/zoom)> — so a radius that scales with `zoom` alone would
-  // exactly cancel that ambient shrink and stay a CONSTANT size on screen.
-  // To make the on-screen spotlight actually widen (not just move more
-  // world-content past a fixed-size window), the radius needs an
-  // additional, independent zoomProgress term on top of the `* zoom`
-  // baseline — `(0.5 + zoomProgress)` — so it covers roughly half the
-  // viewport at minimum zoom and comfortably overshoots the whole viewport
-  // by the time zoomProgress reaches 1 (guaranteeing full, un-vignetted
-  // coverage once fully zoomed out, not just a soft fade at the corners).
-  const zoomProgress = Math.min(1, Math.max(0, (round.zoom - ZOOM_MIN) / (scene.maxZoom - ZOOM_MIN)));
-  const opacityZoomSpan = Math.min(WORLD_REVEAL_OPACITY_ZOOM_SPAN, scene.maxZoom - ZOOM_MIN);
-  const worldLayerPeakOpacity = Math.min(1, Math.max(0, (round.zoom - ZOOM_MIN) / opacityZoomSpan));
-  const worldLayerRevealRadius = viewBoxSize(scene.viewBox) * round.zoom * (0.5 + zoomProgress);
+  // The radial world-reveal spotlight (radius + peak opacity) — the "what
+  // did that paid zoom step actually show me" math, pure and tested in
+  // lib/geo/camera.ts alongside the rest of the view math.
+  const reveal = computeWorldReveal(scene, round.zoom);
 
 
   const shareString = useMemo(() => {
@@ -410,23 +283,23 @@ function App({ boot }: { boot: RoundBoot }) {
               paid for. */}
           <g
             className={isDragging ? undefined : "pan-snap"}
-            transform={`translate(${pan.x} ${pan.y + panelOffsetUnits})`}
+            transform={`translate(${pan.x} ${pan.y + camera.panelOffsetUnits})`}
           >
             <g
-              transform={`translate(${zoomOriginX} ${zoomOriginY}) scale(${1 / round.zoom}) translate(${-zoomOriginX} ${-zoomOriginY})`}
+              transform={`translate(${camera.originX} ${camera.originY}) scale(${1 / round.zoom}) translate(${-camera.originX} ${-camera.originY})`}
             >
-              {/* World-space vertical clamp shift (see worldShiftY above):
+              {/* World-space vertical clamp shift (see Camera.worldShiftY):
                   everything — map, target, labels — slides together so the
                   viewport never crosses the world's top/bottom edge. */}
-              <g transform={`translate(0 ${worldShiftY})`}>
+              <g transform={`translate(0 ${camera.worldShiftY})`}>
               <WorldMapLayer
                 countries={allCountries}
                 excludeStrokeCodes={worldLayerStrokeExclusions}
                 strokeWidth={WORLD_STROKE_PX * scene.pxScale}
-                centerX={zoomOriginX}
-                centerY={zoomOriginY}
-                revealRadius={worldLayerRevealRadius}
-                peakOpacity={worldLayerPeakOpacity}
+                centerX={camera.originX}
+                centerY={camera.originY}
+                revealRadius={reveal.revealRadius}
+                peakOpacity={reveal.peakOpacity}
               />
               {scene.targetBoost > 1 && (
                 <defs>
@@ -485,8 +358,8 @@ function App({ boot }: { boot: RoundBoot }) {
                   is needed. */}
               {round.status === "solved" && (
                 <text
-                  x={zoomOriginX}
-                  y={zoomOriginY}
+                  x={camera.originX}
+                  y={camera.originY}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fontSize={NEIGHBOR_LABEL_PX * scene.pxScale}
@@ -517,8 +390,8 @@ function App({ boot }: { boot: RoundBoot }) {
             <motion.circle
               key={zoomPulseStep}
               data-testid="zoom-pulse"
-              cx={zoomOriginX}
-              cy={zoomOriginY}
+              cx={camera.originX}
+              cy={camera.originY}
               fill="none"
               stroke="#fff"
               style={{ pointerEvents: "none" }}

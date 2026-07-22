@@ -1,4 +1,4 @@
-import type { RoundStatus } from "./round";
+import type { RoundStatus, ScoreEvent } from "./round";
 
 /**
  * A rescaled presentation of remainingSeconds, not a second bookkeeping
@@ -22,4 +22,9 @@ export const SCORE_SECONDS_MULTIPLIER = 10;
 export function computeScore(status: RoundStatus, remainingSeconds: number): number {
   if (status === "failed") return 0;
   return SCORE_BASE_POINTS + Math.round(remainingSeconds * SCORE_SECONDS_MULTIPLIER);
+}
+
+/** The points a discrete bonus/penalty event is worth in the score's currency — the seconds-to-points conversion lives here, next to the multiplier, not in the UI. */
+export function scoreEventPoints(event: ScoreEvent): number {
+  return event.secondsDelta * SCORE_SECONDS_MULTIPLIER;
 }

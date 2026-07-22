@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeScore, SCORE_BASE_POINTS, SCORE_SECONDS_MULTIPLIER } from "./score";
+import { computeScore, scoreEventPoints, SCORE_BASE_POINTS, SCORE_SECONDS_MULTIPLIER } from "./score";
 
 describe("computeScore", () => {
   it("is live (not zero) during a running round", () => {
@@ -21,5 +21,12 @@ describe("computeScore", () => {
 
   it("rounds a fractional remaining-seconds value", () => {
     expect(computeScore("solved", 12.6)).toBe(SCORE_BASE_POINTS + Math.round(12.6 * SCORE_SECONDS_MULTIPLIER));
+  });
+});
+
+describe("scoreEventPoints", () => {
+  it("converts an event's seconds delta to score points via the multiplier", () => {
+    expect(scoreEventPoints({ id: 1, secondsDelta: 2 })).toBe(2 * SCORE_SECONDS_MULTIPLIER);
+    expect(scoreEventPoints({ id: 2, secondsDelta: -15 })).toBe(-15 * SCORE_SECONDS_MULTIPLIER);
   });
 });

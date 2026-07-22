@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { Country, CountryCode } from "../../lib/game/dailyCountry";
 import { WORLD_WIDTH, worldExtentY } from "../../lib/geo/scene";
 
@@ -100,6 +101,42 @@ export interface WorldMapLayerProps {
 }
 
 /**
+ * The world tile's static geometry — hatch, graticule, and every country
+ * silhouette. Split out and memoized because it's by far the heaviest DOM
+ * subtree in the app (~190 paths) and none of its props change during a
+ * round: reveal changes (zoom frames) touch only the gradient/mask defs in
+ * the parent, so React skips reconciling all of this per wheel event.
+ */
+const WorldTile = memo(function WorldTile({
+  countries,
+  excludeStrokeCodes,
+  strokeWidth,
+}: Pick<WorldMapLayerProps, "countries" | "excludeStrokeCodes" | "strokeWidth">) {
+  return (
+    <g id={WORLD_TILE_ID}>
+      <rect x={HATCH_X} y={HATCH_Y} width={HATCH_WIDTH} height={HATCH_HEIGHT} fill={`url(#${OCEAN_HATCH_ID})`} />
+      <g data-testid="world-graticule" stroke={GRATICULE_COLOR} strokeWidth={GRATICULE_LINE_WIDTH_PX}>
+        {GRATICULE_XS.map((x) => (
+          <line key={`v${x}`} x1={x} y1={HATCH_Y} x2={x} y2={HATCH_Y + HATCH_HEIGHT} vectorEffect="non-scaling-stroke" />
+        ))}
+        {GRATICULE_YS.map((y) => (
+          <line key={`h${y}`} x1={0} y1={y} x2={WORLD_WIDTH} y2={y} vectorEffect="non-scaling-stroke" />
+        ))}
+      </g>
+      {Object.entries(countries).map(([code, country]) => (
+        <path
+          key={code}
+          d={country.path}
+          fill={LAND_MASK_COLOR}
+          stroke={excludeStrokeCodes.has(code) ? "none" : WORLD_COLOR}
+          strokeWidth={strokeWidth}
+        />
+      ))}
+    </g>
+  );
+});
+
+/**
  * "Rest of the world" backdrop: every country's silhouette (opaque,
  * masking the ocean pattern beneath) plus a diagonally-hatched ocean
  * background, in the same shared-world coordinate frame as the
@@ -108,8 +145,12 @@ export interface WorldMapLayerProps {
  * countries near the target fade in first/strongest, with the reveal
  * widening and intensifying as the player zooms out, culminating in the
  * whole world visible once fully zoomed out.
+ *
+ * Memoized (all props are stable except revealRadius/peakOpacity, which
+ * only change on zoom) so the app's 5Hz clock-tick re-renders never touch
+ * this subtree at all.
  */
-export function WorldMapLayer({
+export const WorldMapLayer = memo(function WorldMapLayer({
   countries,
   excludeStrokeCodes,
   strokeWidth,
@@ -143,29 +184,10 @@ export function WorldMapLayer({
         </mask>
       </defs>
       <g data-testid="world-map-layer" mask={`url(#${REVEAL_MASK_ID})`}>
-        <g id={WORLD_TILE_ID}>
-          <rect x={HATCH_X} y={HATCH_Y} width={HATCH_WIDTH} height={HATCH_HEIGHT} fill={`url(#${OCEAN_HATCH_ID})`} />
-          <g data-testid="world-graticule" stroke={GRATICULE_COLOR} strokeWidth={GRATICULE_LINE_WIDTH_PX}>
-            {GRATICULE_XS.map((x) => (
-              <line key={`v${x}`} x1={x} y1={HATCH_Y} x2={x} y2={HATCH_Y + HATCH_HEIGHT} vectorEffect="non-scaling-stroke" />
-            ))}
-            {GRATICULE_YS.map((y) => (
-              <line key={`h${y}`} x1={0} y1={y} x2={WORLD_WIDTH} y2={y} vectorEffect="non-scaling-stroke" />
-            ))}
-          </g>
-          {Object.entries(countries).map(([code, country]) => (
-            <path
-              key={code}
-              d={country.path}
-              fill={LAND_MASK_COLOR}
-              stroke={excludeStrokeCodes.has(code) ? "none" : WORLD_COLOR}
-              strokeWidth={strokeWidth}
-            />
-          ))}
-        </g>
+        <WorldTile countries={countries} excludeStrokeCodes={excludeStrokeCodes} strokeWidth={strokeWidth} />
         <use href={`#${WORLD_TILE_ID}`} x={-WORLD_WIDTH} />
         <use href={`#${WORLD_TILE_ID}`} x={WORLD_WIDTH} />
       </g>
     </>
   );
-}
+});

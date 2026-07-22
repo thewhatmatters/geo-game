@@ -6,6 +6,7 @@ import {
   outlineCompletion,
   neighborCompletion,
   latestScoreEvent,
+  splitIntoWordGroups,
   getPenaltySeconds,
   PENALTY_TIERS,
   ROUND_DURATION_SECONDS,
@@ -216,5 +217,21 @@ describe("selectors", () => {
     const state = createRound({ name: "Sri Lanka", unique_letters: 7 }, 3);
     const space = displayChars(state)[3];
     expect(space).toEqual({ char: " ", isLetter: false, revealed: true });
+  });
+});
+
+describe("splitIntoWordGroups", () => {
+  it("keeps a single-word name as one group", () => {
+    const state = createRound(CHAD, 4);
+    const groups = splitIntoWordGroups(displayChars(state));
+    expect(groups).toHaveLength(1);
+    expect(groups[0].map((c) => c.char).join("")).toBe("CHAD");
+  });
+
+  it("splits a multi-word name at spaces without emitting a cell for the space itself", () => {
+    const state = createRound({ name: "Costa Rica", unique_letters: 7 }, 4);
+    const groups = splitIntoWordGroups(displayChars(state));
+    expect(groups.map((g) => g.map((c) => c.char).join(""))).toEqual(["COSTA", "RICA"]);
+    expect(groups.flat().every((c) => c.char !== " ")).toBe(true);
   });
 });

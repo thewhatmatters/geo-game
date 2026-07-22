@@ -234,3 +234,24 @@ export function neighborCompletion(state: RoundState): number {
 export function latestScoreEvent(state: RoundState): ScoreEvent | null {
   return state.scoreEvents.length ? state.scoreEvents[state.scoreEvents.length - 1] : null;
 }
+
+/**
+ * Splits the target name's per-character reveal state at space boundaries
+ * into per-word groups — each group renders as its own bordered box row,
+ * with a plain gap between words rather than a boxed cell for the space
+ * itself.
+ */
+export function splitIntoWordGroups(chars: DisplayChar[]): DisplayChar[][] {
+  const words: DisplayChar[][] = [];
+  let current: DisplayChar[] = [];
+  for (const c of chars) {
+    if (c.char === " ") {
+      if (current.length) words.push(current);
+      current = [];
+    } else {
+      current.push(c);
+    }
+  }
+  if (current.length) words.push(current);
+  return words;
+}

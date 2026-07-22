@@ -13,7 +13,7 @@ import type { DisplayChar, LetterState, RoundStatus, ScoreEvent } from "./round"
 // Re-exported so existing consumers keep one import site for the round's
 // public vocabulary.
 export type { DisplayChar, LetterState, ScoreEvent } from "./round";
-export { HINT_ONSET_FRACTION } from "./round";
+export { HINT_ONSET_FRACTION, splitIntoWordGroups } from "./round";
 
 /** How often the real-time ticker samples the wall clock. The reducer receives the measured delta, so a late tick loses no time. */
 const TICK_INTERVAL_MS = 200;

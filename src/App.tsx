@@ -173,7 +173,7 @@ function App({ boot }: { boot: RoundBoot }) {
   );
 
   const round = useGameRound(daily.target, scene.maxZoom, boot.date);
-  const { streak, notices, noticeMessage, recordOutcome } = useStreak(boot.date);
+  const { streak, notices, ledger, noticeMessage, recordOutcome } = useStreak(boot.date);
   const recordedRef = useRef(false);
   const outlineRef = useRef<HTMLDivElement>(null);
   const topPanelRef = useRef<HTMLDivElement>(null);
@@ -670,6 +670,8 @@ function App({ boot }: { boot: RoundBoot }) {
             freezes={streak.freezes}
             noticeMessage={noticeMessage}
             freezeRuleCopy={FREEZE_RULE_COPY}
+            ledger={ledger}
+            today={boot.date}
           />
         )}
       </div>

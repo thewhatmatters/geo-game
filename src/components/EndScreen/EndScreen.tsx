@@ -6,6 +6,10 @@ import {
   type BreakdownLine,
 } from "../../lib/game/scoreBreakdown";
 import { countdownToNextRound } from "../../lib/game/nextRound";
+import { Heatmap } from "../Heatmap";
+import { StatsOverlay } from "../StatsOverlay";
+import { COMPACT_WEEKS, buildHeatmap } from "../../lib/stats/heatmap";
+import type { LedgerEntry } from "../../lib/storage/outcomes";
 
 /**
  * End screen — the post-round surface, in two acts.
@@ -49,6 +53,10 @@ export interface EndScreenProps {
   noticeMessage?: string | null;
   /** One-line freeze rule (Duolingo-style explainer). */
   freezeRuleCopy?: string;
+  /** US-017 — the outcome ledger behind the heatmap; today's entry is already written by the time this mounts. */
+  ledger?: Record<string, LedgerEntry>;
+  /** Boot date — the heatmap's last real day. */
+  today: string;
 }
 
 function formatAmount(amount: number): string {
@@ -93,6 +101,8 @@ export function EndScreen({
   freezes,
   noticeMessage = null,
   freezeRuleCopy,
+  ledger = {},
+  today,
 }: EndScreenProps) {
   const breakdown = useMemo(
     () =>
@@ -139,6 +149,14 @@ export function EndScreen({
     const id = setTimeout(() => setCopyState("idle"), COPY_FEEDBACK_MS);
     return () => clearTimeout(id);
   }, [copyState]);
+
+  // Compact recent window; today's cell is current because App records the
+  // outcome before this screen mounts (see App's record effect).
+  const compactGrid = useMemo(
+    () => buildHeatmap(ledger, today, COMPACT_WEEKS),
+    [ledger, today],
+  );
+  const [showStats, setShowStats] = useState(false);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -236,6 +254,25 @@ export function EndScreen({
             </div>
           </div>
 
+          {/* Honest record (US-017): the recent window shows failures and
+              missed days at the same weight as solves. Full 12-month history
+              opens as an overlay — the app has no router, and an overlay
+              keeps the explorable map underneath. */}
+          <div className="end-screen__heatmap" data-testid="end-screen-heatmap">
+            <p className="end-screen__kicker" aria-hidden="true">
+              // RECORD — LAST {COMPACT_WEEKS} WEEKS
+            </p>
+            <Heatmap grid={compactGrid} showLegend label="Recent result heatmap" />
+            <button
+              type="button"
+              className="end-screen__history"
+              data-testid="full-history-button"
+              onClick={() => setShowStats(true)}
+            >
+              FULL HISTORY
+            </button>
+          </div>
+
           {noticeMessage ? (
             <p className="end-screen__notice" data-testid="streak-notice">
               {noticeMessage}
@@ -254,6 +291,9 @@ export function EndScreen({
           </p>
         </div>
       </div>
+      {showStats && (
+        <StatsOverlay ledger={ledger} today={today} onClose={() => setShowStats(false)} />
+      )}
     </div>
   );
 }
